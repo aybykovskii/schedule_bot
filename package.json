@@ -1,0 +1,51 @@
+{
+  "name": "schedule_bot",
+  "version": "1.0.0",
+  "description": "Telegram bot to create appointments",
+  "author": "Alexey Bykovsky<alesha.byk@gamil.com>",
+  "main": "src/index.ts",
+  "scripts": {
+    "client:start": "nodemon src/bot/bot",
+    "server:start": "nodemon src/server/server"
+  },
+  "license": "ISC",
+  "nodemonConfig": {
+    "ignore": [
+      "node_modules"
+    ],
+    "ext": "ts",
+    "exec": "node -r tsconfig-paths/register -r ts-node/register"
+  },
+  "dependencies": {
+    "@notionhq/client": "^2.2.13",
+    "@trpc/client": "^10.38.1",
+    "@trpc/server": "^10.38.1",
+    "@types/express": "^4.17.17",
+    "dotenv": "^16.0.1",
+    "express": "^4.18.2",
+    "mongoose": "^7.5.0",
+    "node-telegram-bot-api": "0.57.0",
+    "nodemon": "^2.0.19",
+    "qs": "^6.10.5",
+    "ts-node": "^10.8.1",
+    "tsconfig-paths": "^4.0.0",
+    "typescript": "^4.7.4",
+    "undici": "^5.23.0",
+    "zod": "^3.22.2"
+  },
+  "devDependencies": {
+    "@types/node-telegram-bot-api": "^0.57.1",
+    "@types/qs": "^6.9.7",
+    "@typescript-eslint/eslint-plugin": "^5.30.5",
+    "@typescript-eslint/parser": "^5.30.5",
+    "eslint": "^8.19.0",
+    "eslint-config-airbnb": "^19.0.4",
+    "eslint-config-airbnb-typescript": "^17.0.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-import-resolver-alias": "^1.1.2",
+    "eslint-import-resolver-typescript": "^3.2.1",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "^2.7.1"
+  }
+}
