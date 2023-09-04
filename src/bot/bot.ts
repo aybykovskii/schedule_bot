@@ -3,12 +3,13 @@ import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
 
 import '@/common/polyfill/polyfill'
 
-import { formatDate, isUsualDate, isUsualTime } from '@/common/date'
+import { isUsualDate, isUsualTime } from '@/common/date'
 import { RootRouter } from '@/server/server'
 import { env } from '@/common/environment'
-import { Commands, LessonPeriod } from '@/types'
+import { Commands } from '@/types'
 import { commands, isCommand } from '@/common/commands'
 import { getButtonTextByPeriod, isLessonPeriod } from '@/common/lesson'
+import { getDatesInlineKeyboard, getPeriodsInlineKeyboard, getTimeInlineKeyboard } from '@/common/messages'
 
 const Bot = new TelegramBot(env.TG_BOT_TOKEN, { polling: true })
 
@@ -22,154 +23,87 @@ const trpc = createTRPCProxyClient<RootRouter>({
   links: [httpBatchLink({ url: `http://localhost:${env.SERVER_PORT}/trpc` })],
 })
 
-type Appointment = {
-  userId: number
-  date?: string
-  time?: string
-  name?: string
-  period?: LessonPeriod
-}
-
-class AppointmentData {
-  static appointments: Appointment[] = []
-
-  static edit = ({ userId, ...data }: Appointment) => {
-    const appointment = AppointmentData.appointments.find((app) => app.userId === userId)
-
-    if (!appointment) {
-      AppointmentData.appointments.push({ userId, ...data })
-    } else {
-      AppointmentData.appointments = AppointmentData.appointments.map((app) => {
-        if (app !== appointment) return app
-
-        return {
-          ...app,
-          ...data,
-        }
-      })
-    }
-  }
-
-  static get = (userId: Appointment['userId']) => {
-    const appointment = AppointmentData.appointments.find((app) => app.userId === userId)
-
-    if (!appointment) {
-      throw Error(`Appointment for user ${userId} is undefined`)
-    }
-
-    return appointment as Required<Appointment>
-  }
-}
-
 const startBot = async () => {
   await Bot.setMyCommands(Object.values(commands))
 
-  Bot.on('message', async (msg) => {
-    if (isCommand(Commands.START, msg)) {
+  Bot.on('message', async (message) => {
+    if (isCommand(Commands.START, message)) {
       await sendMessage(
-        msg,
+        message,
         'Привет, это чат-бот для записи на занятия по английскому и итальянскому языку. Внизу ты увидишь список доступных команд:)'
       )
-    } else if (isCommand(Commands.APPOINTMENT, msg)) {
-      const today = new Date().getDate()
-      const month = new Date().getMonth() + 1
-      const year = new Date().getFullYear()
+    } else if (isCommand(Commands.APPOINTMENT, message)) {
+      if (!message.from) return
 
-      const dates = new Array(7)
-        .fill(0)
-        .map((_, i) => today + i)
-        .map((day) => [
-          {
-            callback_data: `${month}.${day}.${year}`,
-            text: `📅 ${formatDate(`${month}.${day}.${year}`)}`,
-          },
-        ])
+      const {
+        from: { id: userId, first_name: name, username },
+      } = message
 
-      await sendMessage(msg, 'Выберите дату', {
-        reply_markup: {
-          inline_keyboard: dates,
-        },
-      })
+      await trpc.lessons.create.query({ name, userId, tg: `@${username}` })
+
+      await sendMessage(message, 'Выберите дату', { reply_markup: { inline_keyboard: getDatesInlineKeyboard() } })
     }
   })
 
   Bot.on('callback_query', async (query) => {
-    try {
-      const userId = query.from.id
-      const text = query.data
+    const {
+      data,
+      message,
+      from: { id: userId },
+    } = query
 
-      if (!text) return
-      console.log({ userId, text })
+    if (!data || !message) return
 
-      if (isUsualDate(text)) {
-        AppointmentData.edit({ userId, date: text })
+    const {
+      message_id: messageId,
+      chat: { id: chatId },
+    } = message
+    const messageIdString = messageId.toString()
 
-        const lessons = await trpc.lessons.getForDay.query(text)
+    if (isUsualDate(data)) {
+      await trpc.lessons.edit.query({ userId, date: data })
 
-        const availableHours = new Array(+env.END_HOUR - +env.START_HOUR)
-          .fill(0)
-          .map((_, i) => +env.START_HOUR + i)
-          .filter((hour) => !lessons.includes(hour))
+      const busyHours = await trpc.lessons.getBusyHours.query(data)
 
-        if (!query.message) return
-        console.log(query)
-        await Bot.deleteMessage(query.message.chat.id, query.message.message_id.toString())
+      await Bot.deleteMessage(chatId, messageIdString)
 
-        await sendMessage(query.message, 'Выберите время занятия', {
-          reply_markup: {
-            inline_keyboard: availableHours.map((hour) => [
-              {
-                callback_data: `${hour}:00`,
-                text: `🕘 ${hour}:00`,
-              },
-            ]),
-          },
-        })
-      } else if (isUsualTime(text)) {
-        AppointmentData.edit({ userId, time: text })
+      await sendMessage(message, 'Выберите время занятия', {
+        reply_markup: {
+          inline_keyboard: getTimeInlineKeyboard(busyHours),
+        },
+      })
+    } else if (isUsualTime(data)) {
+      const time = +data.replace(':00', '')
 
-        console.log(AppointmentData.appointments)
+      await trpc.lessons.edit.query({ userId, time })
 
-        if (!query.message) return
+      await Bot.deleteMessage(chatId, messageIdString)
 
-        await Bot.deleteMessage(query.message.chat.id, query.message.message_id.toString())
+      await sendMessage(message, 'Как часто хотите заниматься?', {
+        reply_markup: { inline_keyboard: getPeriodsInlineKeyboard() },
+      })
+    } else if (isLessonPeriod(data)) {
+      const lesson = await trpc.lessons.edit.query({ userId, period: data })
 
-        const periods = Object.values(LessonPeriod).map((period) => [
-          {
-            callback_data: period,
-            text: getButtonTextByPeriod(period),
-          },
-        ])
+      await Bot.deleteMessage(chatId, messageIdString)
 
-        await sendMessage(query.message, 'Как часто хотите заниматься?', { reply_markup: { inline_keyboard: periods } })
-      } else if (isLessonPeriod(text)) {
-        AppointmentData.edit({
-          userId,
-          period: text,
-          name: `@${query.message?.chat.username} - ${query.message?.chat.first_name}`,
-        })
+      const { name, date, time, period } = lesson
 
-        if (!query.message) return
-        await Bot.deleteMessage(query.message.chat.id, query.message.message_id.toString())
-
-        const { name, date, time, period } = AppointmentData.get(userId)
-
-        await sendMessage(
-          query.message,
-          `
+      await sendMessage(
+        message,
+        `
 Name: ${name}
-Date: ${date}
-Time: ${time}
+Date: ${new Date(date).toLocaleDateString('ru')}
+Time: ${time}:00
 Period: ${getButtonTextByPeriod(period)}
         `
-        )
-
-        await trpc.lessons.create.query({ title: name, date: { start: `${date} ${time}` }, period })
-      }
-    } catch (error) {
-      console.log(error)
+      )
     }
   })
 }
 
-startBot().then(console.log.bind(null, 'Bot started')).catch(console.log)
+startBot()
+  .then(() => {
+    console.log('Bot is running')
+  })
+  .catch(console.log)

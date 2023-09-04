@@ -1,16 +1,20 @@
 import { z } from 'zod'
 
 import { LessonPeriod } from '@/types'
+import { env } from '@/common/environment'
 
 export const lessonPeriod = z.nativeEnum(LessonPeriod)
 
 export const lessonSchema = z.object({
-  title: z.string(),
-  date: z.object({
-    start: z.string(),
-    end: z.string().optional(),
-  }),
+  _id: z.object({}).optional(),
+  __v: z.number().optional(),
+  name: z.string(),
+  tg: z.string().startsWith('@'),
+  userId: z.number(),
+  time: z.number().min(+env.START_HOUR).max(+env.END_HOUR),
+  date: z.string(),
   period: lessonPeriod,
+  isFilled: z.boolean(),
 })
 
 export type Lesson = z.infer<typeof lessonSchema>

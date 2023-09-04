@@ -61,6 +61,7 @@ module.exports = {
     'import/no-extraneous-dependencies': 'off',
     '@typescript-eslint/naming-convention': 'off',
     'class-methods-use-this': 'off',
+    'no-underscore-dangle': 'off',
     'import/order': [
       'warn',
       {

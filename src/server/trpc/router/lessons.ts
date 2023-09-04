@@ -1,58 +1,64 @@
 import { initTRPC } from '@trpc/server'
-import { Client, isFullPageOrDatabase } from '@notionhq/client'
 
-import { env } from '@/common/environment'
-import { LessonPageProperties } from '@/types'
-import { NotionLesson } from '@/server/notion/lesson'
-import { getTimeHours, usualDate } from '@/common/date'
-import { lessonSchema } from '@/common/lesson'
-
-const notion = new Client({
-  auth: env.NOTION_TOKEN,
-})
+import { LessonModel } from '@/server/models'
+import { usualDate } from '@/common/date'
+import { Lesson, isLessonFilled, lessonSchema } from '@/common/lesson'
+import { notionLessons } from '@/server/notion/lessons'
 
 const t = initTRPC.create()
 const { procedure } = t
 
 export const TRPCLessonsRouter = t.router({
-  create: procedure.input(lessonSchema).query(async ({ input: { title, date, period } }) => {
-    const lesson = new NotionLesson(title, date, period)
-
-    const lessonPage = await notion.pages.create(lesson.asPage())
-
-    return lessonPage
-  }),
-
-  getForDay: procedure.input(usualDate).query(async ({ input }) => {
-    const query = await notion.databases.query({
-      database_id: env.NOTION_DATABASE_ID,
-      filter: {
-        and: [
-          {
-            property: LessonPageProperties.Date,
-            date: {
-              after: new Date(`${input} 00:00`).toISOString(),
-            },
-          },
-          {
-            property: LessonPageProperties.Date,
-            date: {
-              before: new Date(`${input} 23:59`).toISOString(),
-            },
-          },
-        ],
-      },
+  create: procedure.input(lessonSchema.deepPartial()).query(async ({ input }) => {
+    const lesson = await LessonModel.findOne({
+      userId: input.userId,
+      isFilled: false,
     })
 
-    return query.results
-      .filter(isFullPageOrDatabase)
-      .map((l) => l.properties[LessonPageProperties.Date])
-      .reduce((acc, l) => {
-        if (l.type === 'date') {
-          acc.push(+getTimeHours(new Date(l.date!.start).toLocaleTimeString('ru')))
-        }
+    if (lesson) return lesson
 
-        return acc
-      }, [] as number[])
+    const newLesson = await LessonModel.create({
+      ...input,
+      isFilled: isLessonFilled(input),
+    })
+
+    return newLesson
+  }),
+
+  edit: procedure.input(lessonSchema.deepPartial()).query(async ({ input }) => {
+    const { date, time, period, userId } = input
+
+    const lesson = await LessonModel.findOne({ userId, isFilled: false })
+
+    if (!lesson) {
+      throw Error('Edited lesson is undefined')
+    }
+
+    const isFilled = isLessonFilled({ ...lesson.toObject(), ...input })
+
+    const updatedLesson = await LessonModel.findOneAndUpdate(
+      { _id: lesson._id },
+      {
+        ...(date ? { date } : {}),
+        ...(time ? { time } : {}),
+        ...(period ? { period } : {}),
+        isFilled,
+      },
+      {
+        new: true,
+      }
+    )
+
+    if (isFilled) {
+      await notionLessons.create(updatedLesson?.toObject() as Lesson)
+    }
+
+    return updatedLesson as Lesson
+  }),
+
+  getBusyHours: procedure.input(usualDate).query(async ({ input }) => {
+    const lessons = await LessonModel.find({ date: input })
+
+    return lessons.map((lesson) => lesson.toObject().time)
   }),
 })

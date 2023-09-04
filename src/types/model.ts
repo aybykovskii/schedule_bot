@@ -6,5 +6,6 @@ export enum ModelNames {
 }
 
 export type ModelObjectId = {
-  _id: ObjectId
+  _id?: ObjectId
+  __v?: number
 }
