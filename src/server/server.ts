@@ -4,6 +4,7 @@ import mongoose from 'mongoose'
 
 import { env } from '@/common/environment'
 import { loggerMiddleware } from '@/common/logger'
+import { i18n } from '@/common/i18n'
 
 import { rootTRPCRouter } from './trpc/router/router'
 
@@ -15,7 +16,7 @@ mongoose.connect(env.MONGODB_URL).then(() => {
 
 app.use(loggerMiddleware)
 app.use(express.json())
-
+app.use(i18n.init)
 app.use('/trpc', createExpressMiddleware({ router: rootTRPCRouter }))
 
 app.listen(env.SERVER_PORT, () => {

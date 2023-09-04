@@ -1,0 +1,4 @@
+{
+  "START": "Hi, this is a chatbot for recording classes in English and Italian. At the bottom you will see a list of available commands:)",
+  "RESULT": "\nName: {name}\nDate: {date}\nTime: {time}:00\nPeriod: {period}"
+}

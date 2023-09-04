@@ -10,6 +10,7 @@ import { Commands } from '@/types'
 import { commands, isCommand } from '@/common/commands'
 import { getButtonTextByPeriod, isLessonPeriod } from '@/common/lesson'
 import { getDatesInlineKeyboard, getPeriodsInlineKeyboard, getTimeInlineKeyboard } from '@/common/messages'
+import { i18n } from '@/common/i18n'
 
 const Bot = new TelegramBot(env.TG_BOT_TOKEN, { polling: true })
 
@@ -27,11 +28,12 @@ const startBot = async () => {
   await Bot.setMyCommands(Object.values(commands))
 
   Bot.on('message', async (message) => {
+    i18n.setLocale(message.from?.language_code ?? 'ru')
+
+    console.log(i18n.__({ phrase: 'START' }))
+
     if (isCommand(Commands.START, message)) {
-      await sendMessage(
-        message,
-        'Привет, это чат-бот для записи на занятия по английскому и итальянскому языку. Внизу ты увидишь список доступных команд:)'
-      )
+      await sendMessage(message, i18n.__('START'))
     } else if (isCommand(Commands.APPOINTMENT, message)) {
       if (!message.from) return
 
@@ -49,7 +51,7 @@ const startBot = async () => {
     const {
       data,
       message,
-      from: { id: userId },
+      from: { id: userId, language_code: lc },
     } = query
 
     if (!data || !message) return
@@ -91,12 +93,12 @@ const startBot = async () => {
 
       await sendMessage(
         message,
-        `
-Name: ${name}
-Date: ${new Date(date).toLocaleDateString('ru')}
-Time: ${time}:00
-Period: ${getButtonTextByPeriod(period)}
-        `
+        i18n.__mf('RESULT', {
+          name,
+          time,
+          period: getButtonTextByPeriod(period),
+          date: new Date(date).toLocaleDateString(lc),
+        })
       )
     }
   })
