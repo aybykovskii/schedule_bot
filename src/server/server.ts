@@ -21,7 +21,7 @@ app.use(express.json())
 app.use(i18n.init)
 
 app.use('/trpc', createExpressMiddleware({ router: rootTRPCRouter }))
-app.use('/lessons.ics', async (req, res) => {
+app.use('/ics', async (_, res) => {
   const lessons = await LessonModel.find({ isFilled: true })
 
   res.send(googleCalendar.asIcs(lessons))
