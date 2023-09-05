@@ -7,6 +7,8 @@ import { loggerMiddleware } from '@/common/logger'
 import { i18n } from '@/common/i18n'
 
 import { rootTRPCRouter } from './trpc/router/router'
+import { LessonModel } from './models'
+import { googleCalendar } from './google'
 
 const app = express()
 
@@ -17,7 +19,13 @@ mongoose.connect(env.MONGODB_URL).then(() => {
 app.use(loggerMiddleware)
 app.use(express.json())
 app.use(i18n.init)
+
 app.use('/trpc', createExpressMiddleware({ router: rootTRPCRouter }))
+app.use('/lessons.ics', async (req, res) => {
+  const lessons = await LessonModel.find({ isFilled: true })
+
+  res.send(googleCalendar.asIcs(lessons))
+})
 
 app.listen(env.SERVER_PORT, () => {
   console.log(`listening on port ${env.SERVER_PORT}`)
