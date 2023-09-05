@@ -1,9 +1,11 @@
+import { Locales } from '@/types'
+
 import { usualDate, usualTime } from './schemas'
 
-export const formatDate = (date: Date | number | string) => {
+export const formatDate = (date: Date | number | string, locale: Locales) => {
   const expectedDate = typeof date === 'string' ? new Date(date) : date
 
-  return Intl.DateTimeFormat('ru', { month: 'long', day: 'numeric' }).format(expectedDate)
+  return Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric' }).format(expectedDate)
 }
 
 export const isUsualDate = (date: string) => usualDate.safeParse(date).success

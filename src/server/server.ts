@@ -2,11 +2,11 @@ import express from 'express'
 import { createExpressMiddleware } from '@trpc/server/adapters/express'
 import mongoose from 'mongoose'
 
+import { i18n } from '@/common/i18n'
 import { env } from '@/common/environment'
 import { loggerMiddleware } from '@/common/logger'
-import { i18n } from '@/common/i18n'
 
-import { rootTRPCRouter } from './trpc/router/router'
+import { rootTRPCRouter } from './router'
 import { LessonModel } from './models'
 import { googleCalendar } from './google'
 
@@ -31,4 +31,4 @@ app.listen(env.SERVER_PORT, () => {
   console.log(`listening on port ${env.SERVER_PORT}`)
 })
 
-export { RootRouter } from './trpc/router/router'
+export { RootRouter } from './router/router'

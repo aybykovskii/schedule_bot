@@ -1,21 +1,19 @@
-import { DeepPartial, LessonPageProperties, LessonPeriod, NotionPageProps } from '@/types'
+import { DeepPartial, LessonPageProperties, LessonPeriod, Locales, NotionPageProps } from '@/types'
 
 import { env } from '../environment'
+import { t } from '../i18n'
 
-import { Lesson, lessonPeriod, lessonSchema } from './schemas'
+import { Lesson, lessonPeriod, lessonSchema } from './schema'
 
 export const isLessonPeriod = (period: string): period is LessonPeriod => lessonPeriod.safeParse(period).success
 
-export const getButtonTextByPeriod = (period: LessonPeriod) => {
+export const getButtonTextByPeriod = (period: LessonPeriod, locale: Locales) => {
   switch (period) {
     case LessonPeriod.Once:
-      return 'Один раз'
+      return t({ phrase: 'periods.once', locale })
 
-    case LessonPeriod.Weak:
-      return 'Каждую неделю'
-
-    case LessonPeriod.Month:
-      return 'Каждый месяц'
+    case LessonPeriod.Weekly:
+      return t({ phrase: 'periods.weekly', locale })
 
     default:
       period satisfies never

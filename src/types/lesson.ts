@@ -6,6 +6,5 @@ export enum LessonPageProperties {
 
 export enum LessonPeriod {
   Once = 'Once',
-  Weak = 'Weak',
-  Month = 'Month',
+  Weekly = 'Weekly',
 }

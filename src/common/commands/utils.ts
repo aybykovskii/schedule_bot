@@ -1,7 +1,22 @@
-import { Message } from 'node-telegram-bot-api'
+import { BotCommand, Message } from 'node-telegram-bot-api'
 
-import { Commands } from '@/types'
+import { Commands, Locales } from '@/types'
 
-import { commands } from './constants'
+import { t } from '../i18n'
 
-export const isCommand = (cmd: Commands, msg: Message) => msg.text === commands[cmd].command
+export const getI18nCommands = (locale: Locales): BotCommand[] => [
+  {
+    command: Commands.START,
+    description: t({ phrase: 'commands.start', locale }),
+  },
+  {
+    command: Commands.CHANGE_LOCALE,
+    description: t({ phrase: 'commands.change_locale', locale }),
+  },
+  {
+    command: Commands.CREATE_A_LESSON,
+    description: t({ phrase: 'commands.create_a_lesson', locale }),
+  },
+]
+
+export const isCommand = (cmd: Commands, msg: Message) => cmd === msg.text

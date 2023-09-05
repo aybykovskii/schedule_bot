@@ -1,4 +1,20 @@
 {
-  "START": "Hi, this is a chatbot for recording classes in English and Italian. At the bottom you will see a list of available commands:)",
-  "RESULT": "\nName: {name}\nDate: {date}\nTime: {time}:00\nPeriod: {period}"
+	"title": "🇺🇸 English",
+  "start": "Hi, this is a chatbot for recording classes in English and Italian. There is a list of available commands at the bottom:)",
+  "date": "Select the date of the lesson",
+  "time": "Select the time of the lesson",
+	"period": "How often do you want to practice?",
+  "result": "Your lesson will take place on {date} at {time}.\n You have indicated that you want to study {period}.\n Teach will contact you via Telegram.",
+  "locale": "Select the language in which you want to continue communication",
+	"locale_set": "Great, the language is set!",
+	"unknown_command": "Unfortunately, this command is still unknown to me, select one from the list and I will be happy to help you)",
+  "commands": {
+    "start": "Start bot",
+    "change_locale": "Change locale",
+    "create_a_lesson": "Create a lesson"
+  },
+  "periods": {
+		"once": "Once",
+		"weekly": "Weekly"
+	}
 }

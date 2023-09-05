@@ -3,7 +3,7 @@ import { initTRPC } from '@trpc/server'
 import { LessonModel } from '@/server/models'
 import { usualDate } from '@/common/date'
 import { Lesson, isLessonFilled, lessonSchema } from '@/common/lesson'
-import { notionLessons } from '@/server/notion/lessons'
+import { notionLessons } from '@/server/notion'
 
 const t = initTRPC.create()
 const { procedure } = t
@@ -25,7 +25,7 @@ export const TRPCLessonsRouter = t.router({
     return newLesson
   }),
 
-  edit: procedure.input(lessonSchema.deepPartial()).query(async ({ input }) => {
+  update: procedure.input(lessonSchema.deepPartial()).query(async ({ input }) => {
     const { date, time, period, userId } = input
 
     const lesson = await LessonModel.findOne({ userId, isFilled: false })

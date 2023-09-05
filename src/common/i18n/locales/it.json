@@ -1,0 +1,20 @@
+{
+	"title": "🇮🇹 Italiano",
+	"start": "Ciao, questo è un chatbot per iscriversi a lezioni di inglese e italiano. In fondo c'è un elenco di comandi disponibili:)",
+  "date": "Scegli una data di lezione",
+  "time": "Scegli l'ora della tua lezione",
+	"period": "Quanto spesso vuoi esercitarti?",
+	"result": "La tua lezione si svolgerà l ' {date} alle {time}.\nHai indicato che vuoi esercitarti {period}.\nInsegnare ti contatterà tramite Telegram",
+  "locale": "Scegli la lingua in cui vuoi continuare a comunicare",
+	"locale_set": "Ottimo, la lingua è impostata!",
+	"unknown_command": "Sfortunatamente, questo comando è ancora sconosciuto a me, Scegli una lista e sarò felice di aiutarti)",
+	"commands": {
+		"start": "Avvia il bot",
+    "change_locale": "Cambia lingua",
+		"create_a_lesson": "Crea lezione"
+	},
+	"periods": {
+		"once": "Una volta",
+		"weekly": "Settimanalmente"
+	}
+}

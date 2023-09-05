@@ -2,7 +2,7 @@ import { ObjectId } from 'mongoose'
 
 export enum ModelNames {
   Lesson = 'Lesson',
-  Schedule = 'Schedule',
+  Locale = 'Locale',
 }
 
 export type ModelObjectId = {

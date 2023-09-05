@@ -1,7 +1,8 @@
 import { z } from 'zod'
 
 import { LessonPeriod } from '@/types'
-import { env } from '@/common/environment'
+
+import { env } from '../environment'
 
 export const lessonPeriod = z.nativeEnum(LessonPeriod)
 
