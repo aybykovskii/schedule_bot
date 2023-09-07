@@ -83,82 +83,86 @@ const startBot = async () => {
   })
 
   Bot.on('callback_query', async (query) => {
-    const {
-      data,
-      message,
-      from: { id: userId },
-    } = query
+    try {
+      const {
+        data,
+        message,
+        from: { id: userId },
+      } = query
 
-    if (!data || !message) return
+      if (!data || !message) return
 
-    const {
-      message_id: messageId,
-      chat: { id: chatId },
-    } = message
-    const messageIdString = messageId.toString()
+      const {
+        message_id: messageId,
+        chat: { id: chatId },
+      } = message
+      const messageIdString = messageId.toString()
 
-    const locale = await trpc.locale.get.query({ userId })
+      const locale = await trpc.locale.get.query({ userId })
 
-    switch (true) {
-      case isLocale(data): {
-        const newLocale = await changeChatLocale(chatId, userId, data)
+      switch (true) {
+        case isLocale(data): {
+          const newLocale = await changeChatLocale(chatId, userId, data)
 
-        await Bot.deleteMessage(chatId, messageIdString)
+          await Bot.deleteMessage(chatId, messageIdString)
 
-        await sendMessage(message, t({ phrase: 'locale_set', locale: newLocale }))
-        break
-      }
+          await sendMessage(message, t({ phrase: 'locale_set', locale: newLocale }))
+          break
+        }
 
-      case isUsualDate(data): {
-        await trpc.lessons.update.query({ userId, date: data })
+        case isUsualDate(data): {
+          await trpc.lessons.update.query({ userId, date: data })
 
-        const busyHours = await trpc.lessons.getBusyHours.query(data)
+          const busyHours = await trpc.lessons.getBusyHours.query(data)
 
-        await Bot.deleteMessage(chatId, messageIdString)
+          await Bot.deleteMessage(chatId, messageIdString)
 
-        await sendMessage(message, t({ phrase: 'date', locale }), {
-          reply_markup: {
-            inline_keyboard: getTimeInlineKeyboard(busyHours),
-          },
-        })
-        break
-      }
+          await sendMessage(message, t({ phrase: 'date', locale }), {
+            reply_markup: {
+              inline_keyboard: getTimeInlineKeyboard(busyHours),
+            },
+          })
+          break
+        }
 
-      case isUsualTime(data): {
-        await trpc.lessons.update.query({ userId, time: +data })
+        case isUsualTime(data): {
+          await trpc.lessons.update.query({ userId, time: +data })
 
-        await Bot.deleteMessage(chatId, messageIdString)
+          await Bot.deleteMessage(chatId, messageIdString)
 
-        await sendMessage(message, t({ phrase: 'period', locale }), {
-          reply_markup: { inline_keyboard: getPeriodsInlineKeyboard(locale) },
-        })
-        break
-      }
+          await sendMessage(message, t({ phrase: 'period', locale }), {
+            reply_markup: { inline_keyboard: getPeriodsInlineKeyboard(locale) },
+          })
+          break
+        }
 
-      case isLessonPeriod(data): {
-        const lesson = await trpc.lessons.update.query({ userId, period: data as LessonPeriod })
+        case isLessonPeriod(data): {
+          const lesson = await trpc.lessons.update.query({ userId, period: data as LessonPeriod })
 
-        await Bot.deleteMessage(chatId, messageIdString)
+          await Bot.deleteMessage(chatId, messageIdString)
 
-        const { date, time, period } = lesson
+          const { date, time, period } = lesson
 
-        await sendMessage(
-          message,
-          t(
-            { phrase: 'result', locale },
-            {
-              time: `${time}:00`,
-              period: getButtonTextByPeriod(period, locale).toLowerCase(),
-              date: new Date(date).toLocaleDateString(locale),
-            }
+          await sendMessage(
+            message,
+            t(
+              { phrase: 'result', locale },
+              {
+                time: `${time}:00`,
+                period: getButtonTextByPeriod(period, locale).toLowerCase(),
+                date: new Date(date).toLocaleDateString(locale),
+              }
+            )
           )
-        )
-        break
-      }
+          break
+        }
 
-      default: {
-        await sendMessage(message, t({ phrase: 'unknown_command', locale }))
+        default: {
+          await sendMessage(message, t({ phrase: 'unknown_command', locale }))
+        }
       }
+    } catch (e) {
+      console.info('Error: ', e)
     }
   })
 }

@@ -4,6 +4,9 @@ import { LessonModel } from '@/server/models'
 import { usualDate } from '@/common/date'
 import { Lesson, isLessonFilled, lessonSchema } from '@/common/lesson'
 import { notionLessons } from '@/server/notion'
+import { env } from '@/common/environment'
+
+import { googleCalendar } from '../google'
 
 const t = initTRPC.create()
 const { procedure } = t
@@ -50,7 +53,11 @@ export const TRPCLessonsRouter = t.router({
     )
 
     if (isFilled) {
-      await notionLessons.create(updatedLesson?.toObject() as Lesson)
+      await googleCalendar.createEvent(updatedLesson?.toObject() as Lesson)
+
+      if (env.USE_NOTION) {
+        await notionLessons.create(updatedLesson?.toObject() as Lesson)
+      }
     }
 
     return updatedLesson as Lesson

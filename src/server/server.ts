@@ -31,4 +31,4 @@ app.listen(env.SERVER_PORT, () => {
   console.log(`listening on port ${env.SERVER_PORT}`)
 })
 
-export { RootRouter } from './router/router'
+export { RootRouter } from './router'

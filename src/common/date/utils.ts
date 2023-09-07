@@ -2,6 +2,8 @@ import { Locales } from '@/types'
 
 import { usualDate, usualTime } from './schemas'
 
+const HOUR = 60
+
 export const formatDate = (date: Date | number | string, locale: Locales) => {
   const expectedDate = typeof date === 'string' ? new Date(date) : date
 
@@ -21,4 +23,10 @@ export const getIcsDate = (date: string, time: number): [number, number, number,
   const day = d.getDate()
 
   return [year, month, day, time, 0]
+}
+
+export const getJSONDate = (date: string, time: number) => {
+  const hourOffset = new Date().getTimezoneOffset() / HOUR
+
+  return new Date(`${date} ${time - hourOffset}:00`).toJSON()
 }

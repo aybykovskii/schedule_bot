@@ -1,3 +1,5 @@
 node_modules
 .env
 .vscode
+keys.json
+src/server/google/keys.json
