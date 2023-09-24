@@ -1,11 +1,21 @@
-import { NextFunction, Request, Response } from 'express'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import dayjs from 'dayjs'
 
-import { env } from '../environment'
+import { COLOR_BY_LOG_TYPE, LogType } from './constants'
 
-export const loggerMiddleware = (req: Request, _res: Response, next: NextFunction) => {
-  if (env.MODE === 'development') {
-    console.log('⬅️ ', req.method, req.path, req.body ?? req.query)
+export class Log {
+  private static log = (label: LogType, messages: any[]) => {
+    const timestamp = dayjs().format('DD.MM.YYYY HH:mm:ss')
+
+    const getStamp = (isEnd = false) =>
+      `${COLOR_BY_LOG_TYPE[label]}[${label.toUpperCase()}${isEnd ? '_END' : ''}] ${timestamp}\x1b[0m \n`
+
+    console.log(getStamp(), ...messages, `\n${getStamp(true)}`)
   }
 
-  next()
+  public static info = (...messages: any[]) => Log.log('info', messages)
+
+  public static warn = (...messages: any[]) => Log.log('warn', messages)
+
+  public static error = (...messages: any[]) => Log.log('error', messages)
 }
