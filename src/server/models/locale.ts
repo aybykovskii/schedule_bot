@@ -1,10 +1,11 @@
 import { Schema, model } from 'mongoose'
 
-import { Locale, ModelNames, ModelObjectId } from '@/types'
+import { ModelNames } from '@/types'
+import { Locale } from '@/common/locale'
 
 export const LocaleModel = model(
   ModelNames.Locale,
-  new Schema<ModelObjectId & Locale>({
+  new Schema<Locale>({
     userId: Number,
     locale: String,
   })

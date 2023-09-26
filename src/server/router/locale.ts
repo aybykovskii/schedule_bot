@@ -1,31 +1,34 @@
 import { initTRPC } from '@trpc/server'
 import { z } from 'zod'
 
-import { localeSchema } from '@/common/locale'
-import { LocaleModel } from '@/server/models/locale'
-import { Locales } from '@/types/locale'
+import { LocaleSchema } from '@/common/schemas'
+import { Assertion } from '@/common/assertion'
+
+import { localeService } from '../services'
 
 const t = initTRPC.create()
 const { procedure } = t
 
-export const TRPCLocaleRouter = t.router({
-  set: procedure.input(localeSchema).query(async ({ input: { userId, locale } }) => {
-    const lc = await LocaleModel.findOne({ userId })
+export const localeRouter = t.router({
+  set: procedure.input(LocaleSchema).query(async ({ input }) => {
+    const { create, read, update } = localeService
 
-    if (lc) {
-      const result = await LocaleModel.findOneAndUpdate({ userId }, { locale }, { new: true })
+    const findResult = await read(input.userId)
 
-      return result?.toObject().locale
-    }
+    Assertion.server(findResult)
 
-    const result = await LocaleModel.create({ userId, locale })
+    const result = await (findResult.data ? update : create)(input)
 
-    return result?.toObject().locale
+    Assertion.server(result)
+
+    return result.data.locale
   }),
 
-  get: procedure.input(z.object({ userId: z.number() })).query(async ({ input: { userId } }) => {
-    const lc = await LocaleModel.findOne({ userId })
+  get: procedure.input(z.number()).query(async ({ input: userId }) => {
+    const result = await localeService.read(userId)
 
-    return lc ? lc.toObject().locale : Locales.En
+    Assertion.server(result)
+
+    return result.data?.locale
   }),
 })

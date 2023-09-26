@@ -1,13 +1,13 @@
 import { initTRPC } from '@trpc/server'
 
-import { TRPCLessonsRouter } from './lessons'
-import { TRPCLocaleRouter } from './locale'
+import { eventRouter } from './event'
+import { localeRouter } from './locale'
 
 const t = initTRPC.create()
 
-export const rootTRPCRouter = t.router({
-  lessons: TRPCLessonsRouter,
-  locale: TRPCLocaleRouter,
+export const rootRouter = t.router({
+  event: eventRouter,
+  locale: localeRouter,
 })
 
-export type RootRouter = typeof rootTRPCRouter
+export type RootRouter = typeof rootRouter

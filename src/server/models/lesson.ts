@@ -1,11 +1,11 @@
 import { model, Schema } from 'mongoose'
 
-import { Lesson } from '@/common/lesson'
-import { ModelNames, ModelObjectId } from '@/types'
+import { Event } from '@/common/schemas'
+import { ModelNames } from '@/types'
 
-export const LessonModel = model(
-  ModelNames.Lesson,
-  new Schema<ModelObjectId & Lesson>({
+export const EventModel = model(
+  ModelNames.Event,
+  new Schema<Event>({
     userId: Number,
     name: String,
     tg: String,
@@ -13,5 +13,11 @@ export const LessonModel = model(
     period: String,
     isFilled: Boolean,
     date: String,
+    dayInWeek: Number,
+    notionPageId: String,
+    googleEventId: String,
+    datesMessageId: Number,
+    timeMessageId: Number,
+    exceptionDates: [String],
   })
 )
