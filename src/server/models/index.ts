@@ -1,1 +1,1 @@
-export * from './lesson'
+export * from './event'

@@ -1,7 +1,8 @@
 import { calendar_v3, google } from 'googleapis'
+import { RRule, RRuleSet } from 'rrule'
 import dayjs from 'dayjs'
 
-import { EventPeriods, PromiseResponse } from '@/types'
+import { EventColorCodes, EventTransparency, GoogleEventStatuses, Periods, PromiseResponse } from '@/types'
 import { env } from '@/common/environment'
 import { Log } from '@/common/logger'
 import { Event } from '@/common/schemas'
@@ -39,14 +40,47 @@ class GoogleCalendarService {
     })
   }
 
+  private getRecurrenceString(period: Periods): string[]
+
+  private getRecurrenceString(period: Periods, exdates: string[], time: number): string[]
+
+  private getRecurrenceString(period: Periods, exdates?: string[], time?: number): string[] {
+    const rules: string[] = []
+
+    if (period === Periods.Weekly) {
+      const rrule = new RRule({
+        freq: RRule.WEEKLY,
+      })
+
+      rules.push(rrule.toString())
+    }
+
+    exdates?.forEach((date) => {
+      const set = new RRuleSet()
+
+      set.exdate(dayjs(`${date} ${time}:00`).toDate())
+
+      rules.push(set.toString())
+    })
+
+    return rules
+  }
+
+  private getEventInfoByStatus = ({ name, tg }: Event, status: GoogleEventStatuses) => {
+    const isCancelled = status === GoogleEventStatuses.Cancelled
+
+    return {
+      summary: `${isCancelled ? 'Cancelled: ' : ''}${name} - ${tg}`,
+      colorId: isCancelled ? EventColorCodes.Cancelled : EventColorCodes.Confirmed,
+      transparency: isCancelled ? EventTransparency.Transparent : EventTransparency.Opaque,
+      status: GoogleEventStatuses.Confirmed,
+    }
+  }
+
   private dateAsISO = (date: string, hour = this.startHour) => {
     const day = dayjs(hour ? `${date} ${hour}:00` : date)
 
     return day.toISOString()
-  }
-
-  private getPeriodRecurrence = (period: EventPeriods) => {
-    return period === EventPeriods.Weekly ? [`RRULE:FREQ=${period.toUpperCase()}`] : []
   }
 
   private getEventTime = (date: string, hour: number) => {
@@ -78,18 +112,19 @@ class GoogleCalendarService {
     return { success: true, data: list.data.items }
   }
 
-  createEvent = async ({ date, time, name, tg, period }: Event): PromiseResponse<GCEventId> => {
-    const transparency = 'opaque'
-    const status = 'confirmed'
+  createEvent = async (event: Event, colorStatus = GoogleEventStatuses.Confirmed): PromiseResponse<GCEventId> => {
+    const { date, time, period } = event
+    const { summary, colorId, status, transparency } = this.getEventInfoByStatus(event, colorStatus)
 
     const result = await this.calendar.events.insert({
       calendarId: this.calendarId,
       requestBody: {
-        summary: `${name} - ${tg}`,
-        ...this.getEventTime(date, time),
-        recurrence: this.getPeriodRecurrence(period),
-        transparency,
         status,
+        colorId,
+        summary,
+        transparency,
+        recurrence: this.getRecurrenceString(period),
+        ...this.getEventTime(date, time),
       },
     })
 
@@ -100,24 +135,24 @@ class GoogleCalendarService {
     return { success: true, data: result.data.id }
   }
 
-  updateEvent = async (
-    eventId: string,
-    { name, tg, date, time, exceptionDates }: Partial<Event>
-  ): PromiseResponse<GCEvent> => {
-    const result = await this.calendar.events.update({
+  updateEvent = async (eventId: string, event: Event): PromiseResponse<GCEvent> => {
+    const { date, time, exceptionDates, period } = event
+    const { summary, colorId, status, transparency } = this.getEventInfoByStatus(event, GoogleEventStatuses.Confirmed)
+
+    const ev = {
       calendarId: this.calendarId,
       eventId,
       requestBody: {
-        ...(name && tg && { summary: `${name} - ${tg}` }),
-        ...(date && time && this.getEventTime(date, time)),
-        ...(exceptionDates && {
-          recurrence: [
-            ...this.getPeriodRecurrence(EventPeriods.Weekly),
-            ...exceptionDates.map((d) => `EXDATE:${this.dateAsISO(d, 0)}`),
-          ],
-        }),
+        status,
+        colorId,
+        summary,
+        transparency,
+        recurrence: this.getRecurrenceString(period, exceptionDates, time),
+        ...this.getEventTime(date, time),
       },
-    })
+    }
+
+    const result = await this.calendar.events.update(ev)
 
     if (!result.data) {
       return { success: false, error: 'Error while updating event' }

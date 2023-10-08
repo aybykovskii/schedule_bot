@@ -14,7 +14,6 @@ export const EventModel = model(
     isFilled: Boolean,
     date: String,
     dayInWeek: Number,
-    notionPageId: String,
     googleEventId: String,
     datesMessageId: Number,
     timeMessageId: Number,

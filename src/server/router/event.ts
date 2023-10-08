@@ -1,9 +1,9 @@
 import { initTRPC } from '@trpc/server'
 
-import { usualDate } from '@/common/date'
-import { ObjectIdSchema, assertIsLessonFilled, isLessonFilled } from '@/common/lesson'
+import { assertIsEventFilled, isEventFilled } from '@/common/event'
 import { Assertion } from '@/common/assertion'
-import { EventSchema } from '@/common/schemas'
+import { EventSchema, ObjectIdSchema, UsualDate } from '@/common/schemas'
+import { GoogleEventStatuses, Periods } from '@/types'
 
 import { eventService, googleCalendarService } from '../services'
 
@@ -27,6 +27,14 @@ export const eventRouter = t.router({
       return createResult.data
     }),
 
+  readById: procedure.input(ObjectIdSchema).query(async ({ input: id }) => {
+    const readResult = await eventService.findById(id)
+
+    Assertion.server(readResult)
+
+    return readResult.data
+  }),
+
   readAll: procedure.input(EventSchema.pick({ userId: true })).query(async ({ input: { userId } }) => {
     const readResult = await eventService.readByUserId(userId, true)
 
@@ -38,19 +46,19 @@ export const eventRouter = t.router({
   update: procedure
     .input(EventSchema.pick({ userId: true }).and(EventSchema.deepPartial()))
     .output(EventSchema.deepPartial())
-    .query(async ({ input: { userId, ...lesson } }) => {
+    .query(async ({ input: { userId, ...event } }) => {
       const result = await eventService.findUnfilled(userId)
 
       Assertion.server(result)
 
-      const isFilled = isLessonFilled({ ...result.data, ...lesson })
+      const isFilled = isEventFilled({ ...result.data, ...event })
 
-      const updateResult = await eventService.update(result.data._id, { ...lesson, isFilled })
+      const updateResult = await eventService.update(result.data._id, { ...event, isFilled })
 
       Assertion.server(updateResult)
 
       if (isFilled) {
-        assertIsLessonFilled(updateResult.data)
+        assertIsEventFilled(updateResult.data)
         const createEventResult = await googleCalendarService.createEvent(updateResult.data)
 
         Assertion.server(createEventResult)
@@ -68,22 +76,44 @@ export const eventRouter = t.router({
 
       Assertion.server(result)
 
+      const {
+        data,
+        data: { googleEventId },
+      } = result
+
+      await googleCalendarService.updateEvent(googleEventId, data)
+
+      await googleCalendarService.createEvent(
+        {
+          ...data,
+          date,
+          period: Periods.Once,
+          exceptionDates: [],
+        },
+        GoogleEventStatuses.Cancelled
+      )
+
       return result.data
     }),
 
   delete: procedure.input(ObjectIdSchema).query(async ({ input: id }) => {
-    const result = await eventService.delete(id)
+    const result = await eventService.findById(id)
 
     Assertion.server(result)
 
-    return result.data
+    await googleCalendarService.deleteEvent(result.data.googleEventId)
+    await googleCalendarService.createEvent(result.data, GoogleEventStatuses.Cancelled)
+
+    await eventService.delete(id)
+
+    return null
   }),
 
-  getDateBusyHours: procedure.input(usualDate).query(async ({ input }) => {
+  getDateBusyHours: procedure.input(UsualDate).query(async ({ input }) => {
     const result = await eventService.findByDate(input)
 
     Assertion.server(result)
 
-    return result.data.map((lesson) => lesson.time)
+    return result.data.map((event) => event.time)
   }),
 })

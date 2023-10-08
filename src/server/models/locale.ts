@@ -1,7 +1,7 @@
 import { Schema, model } from 'mongoose'
 
 import { ModelNames } from '@/types'
-import { Locale } from '@/common/locale'
+import { Locale } from '@/common/schemas'
 
 export const LocaleModel = model(
   ModelNames.Locale,

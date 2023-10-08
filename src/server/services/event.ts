@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 
 import { Event } from '@/common/schemas'
-import { EventPeriods, ModelFields, PromiseResponse } from '@/types'
+import { Periods, ModelFields, PromiseResponse } from '@/types'
 import { Log } from '@/common/logger'
 
 import { EventModel } from '../models'
@@ -24,6 +24,18 @@ export class EventService {
     return { success: true, data: result.toObject() }
   }
 
+  findById = async (id: ModelId): PromiseResponse<Event> => {
+    const result = await EventModel.findById(id)
+
+    if (!result || result.errors) {
+      Log.error(`Error while reading event: ${JSON.stringify(result?.errors)}`)
+
+      return { success: false, error: result?.errors?.message ?? 'Error while reading event' }
+    }
+
+    return { success: true, data: result.toObject() }
+  }
+
   findUnfilled = async (userId: UserId): PromiseResponse<Partial<Event>> => {
     const result = await EventModel.findOne({ userId, isFilled: false })
 
@@ -36,7 +48,7 @@ export class EventService {
     return { success: true, data: result.toObject() }
   }
 
-  readByUserId = async (userId: UserId, isFilled: boolean): PromiseResponse<Partial<Event>[]> => {
+  readByUserId = async (userId: UserId, isFilled: boolean): PromiseResponse<Event[]> => {
     const data = await EventModel.find({ userId, isFilled })
 
     return { success: true, data }
@@ -48,9 +60,9 @@ export class EventService {
     const data = await EventModel.find({
       isFilled: true,
       $or: [
-        { period: EventPeriods.Once, date },
+        { period: Periods.Once, date },
         {
-          period: EventPeriods.Weekly,
+          period: Periods.Weekly,
           exceptionDates: { $ne: date },
           dayInWeek: day,
         },
@@ -78,7 +90,7 @@ export class EventService {
   }
 
   addExceptionDate = async (id: ModelId, date: EventDate): PromiseResponse<Event> => {
-    const result = await EventModel.findOneAndUpdate({ _id: id }, { $push: { exceptionDates: date } })
+    const result = await EventModel.findOneAndUpdate({ _id: id }, { $push: { exceptionDates: date } }, { new: true })
 
     if (!result || result?.errors) {
       Log.error(`Error while adding exception date: ${JSON.stringify(result?.errors)}`)
@@ -90,7 +102,9 @@ export class EventService {
   }
 
   delete = async (id: ModelId): PromiseResponse<null> => {
-    const result = await EventModel.findOneAndDelete({ _id: id })
+    const event = await EventModel.findOne({ _id: id })
+
+    const result = await event?.deleteOne()
 
     if (result?.errors) {
       Log.error(`Error while deleting event: ${JSON.stringify(result.errors)}`)
