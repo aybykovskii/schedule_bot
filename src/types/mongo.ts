@@ -1,11 +1,11 @@
 import { ObjectId } from 'mongoose'
 
 export enum ModelNames {
-  Lesson = 'Lesson',
+  Event = 'Event',
   Locale = 'Locale',
 }
 
-export type ModelObjectId = {
+export type ModelFields = {
   _id?: ObjectId
   __v?: number
 }

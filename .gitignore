@@ -1,5 +1,12 @@
 node_modules
-.env
+
+# IDEs
 .vscode
+.idea
+
+# env
+.env
+
+# Google Accout Keys
 keys.json
-src/server/google/keys.json
+**/keys.json

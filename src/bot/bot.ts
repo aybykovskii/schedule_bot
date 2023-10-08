@@ -1,174 +1,251 @@
+import { createTRPCProxyClient } from '@trpc/client'
 import TelegramBot, { Message } from 'node-telegram-bot-api'
-import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
+import dayjs from 'dayjs'
+import { ObjectId } from 'mongoose'
 
-import '@/common/polyfill/polyfill'
-
-import { Commands, LessonPeriod, Locales } from '@/types'
-import { t } from '@/common/i18n'
-import { env } from '@/common/environment'
-import { RootRouter } from '@/server/server'
-import { isUsualDate, isUsualTime } from '@/common/date'
-import { getI18nCommands } from '@/common/commands'
-import { getButtonTextByPeriod, isLessonPeriod } from '@/common/lesson'
+import { RootRouter } from '@/server/router'
+import { Assertion } from '@/common/assertion'
+import { Periods, Locales, Actions } from '@/types'
+import { getUserLocale } from '@/common/locale'
+import { getBotCommands } from '@/common/commands'
+import { Phrase, t } from '@/common/i18n'
+import { getPeriodButtonText } from '@/common/event'
+import { localizeDate } from '@/common/date'
+import { Event } from '@/common/schemas'
 import {
-  getDatesInlineKeyboard,
+  getCreateEventDatesInlineKeyboard,
+  getDatesKeyboard,
+  getEventActionsInlineKeyboard,
+  getEventsInlineKeyboard,
   getLocalesInlineKeyboard,
   getPeriodsInlineKeyboard,
   getTimeInlineKeyboard,
-} from '@/common/messages'
-import { getUserLocale, isLocale } from '@/common/locale'
+} from '@/common/keyboard'
+import {
+  eventActionCD,
+  eventCreateDateCD,
+  eventPeriodCD,
+  eventIdCD,
+  eventTimeCD,
+  localeCD,
+  eventActionDateCD,
+} from '@/common/callbackData'
 
-const Bot = new TelegramBot(env.TG_BOT_TOKEN, { polling: true })
+export class Bot extends TelegramBot {
+  trpc: ReturnType<typeof createTRPCProxyClient<RootRouter>>
 
-const trpc = createTRPCProxyClient<RootRouter>({
-  links: [httpBatchLink({ url: `http://localhost:${env.SERVER_PORT}/trpc` })],
-})
+  constructor(token: string, trpc: ReturnType<typeof createTRPCProxyClient<RootRouter>>) {
+    super(token, { polling: true })
 
-const sendMessage = async (msg: Message, text: string, options?: TelegramBot.SendMessageOptions) => {
-  const chatId = msg.chat?.id
+    this.trpc = trpc
+  }
 
-  await Bot.sendMessage(chatId, text, options)
-}
+  getMessageInfo = async (msg: Message) => {
+    const {
+      from,
+      chat: { id: chatId },
+    } = msg
 
-const changeChatLocale = async (chatId: number, userId: number, lc?: string | Locales) => {
-  const locale = getUserLocale(lc)
+    Assertion.client(from, 'Message must have a sender')
 
-  await Bot.setMyCommands(getI18nCommands(locale))
-  await Bot.setChatMenuButton({ chat_id: chatId, menu_button: { type: 'commands' } })
-  const newLocale = await trpc.locale.set.query({ userId, locale })
+    const userLocale = await this.trpc.locale.get.query(chatId)
 
-  return newLocale
-}
+    const locale = userLocale ?? getUserLocale(from.language_code)
 
-const startBot = async () => {
-  Bot.on('message', async (message) => {
-    const { from } = message
+    return { ...msg, from, userId: chatId, locale }
+  }
 
-    if (!from) return
+  send = async (
+    msg: Message,
+    phrase: Phrase,
+    phraseReplaces?: Record<PropertyKey, string | number> | undefined,
+    options?: TelegramBot.SendMessageOptions
+  ) => {
+    const { userId, locale } = await this.getMessageInfo(msg)
 
-    const locale = await trpc.locale.get.query({ userId: from.id })
+    return this.sendMessage(userId, t({ phrase, locale }, phraseReplaces ?? {}), options)
+  }
 
-    switch (message.text) {
-      case Commands.START: {
-        await changeChatLocale(message.chat.id, from.id, from.language_code)
-        await sendMessage(message, t({ phrase: 'start', locale }))
-        break
-      }
+  delete = async (msg: Message, id?: number) => {
+    const { userId } = await this.getMessageInfo(msg)
 
-      case Commands.CHANGE_LOCALE: {
-        await sendMessage(message, t({ phrase: 'locale', locale }), {
-          reply_markup: { inline_keyboard: getLocalesInlineKeyboard() },
-        })
-        break
-      }
+    await this.deleteMessage(userId, (id ?? msg.message_id).toString())
+  }
 
-      case Commands.CREATE_A_LESSON: {
-        if (!message.from) return
-        const {
-          from: { id: userId, first_name: name, username },
-        } = message
+  changeChatLocale = async (userId: number, lc?: string | Locales) => {
+    const locale = getUserLocale(lc)
 
-        await trpc.lessons.create.query({ name, userId, tg: `@${username}` })
+    await this.setMyCommands(getBotCommands(locale))
+    await this.setChatMenuButton({ chat_id: userId, menu_button: { type: 'commands' } })
 
-        await sendMessage(message, t({ phrase: 'time', locale }), {
-          reply_markup: { inline_keyboard: getDatesInlineKeyboard(locale) },
-        })
-        break
-      }
+    return this.trpc.locale.set.query({ userId, locale })
+  }
 
-      default: {
-        await sendMessage(message, t({ phrase: 'unknown_command', locale }))
-      }
-    }
-  })
+  initiateEvent = async (msg: Message) => {
+    const {
+      userId,
+      chat: { username, first_name: name = '' },
+    } = await this.getMessageInfo(msg)
 
-  Bot.on('callback_query', async (query) => {
-    try {
-      const {
-        data,
-        message,
-        from: { id: userId },
-      } = query
+    await this.trpc.event.create.query({ name, userId, tg: `@${username}` })
 
-      if (!data || !message) return
+    await this.sendDates(msg, undefined)
+  }
 
-      const {
-        message_id: messageId,
-        chat: { id: chatId },
-      } = message
-      const messageIdString = messageId.toString()
+  submitEvent = async (msg: Message, data: string) => {
+    const { userId, locale } = await this.getMessageInfo(msg)
+    const { period } = eventPeriodCD.get<{ period: Periods }>(data)
 
-      const locale = await trpc.locale.get.query({ userId })
+    await this.delete(msg)
 
-      switch (true) {
-        case isLocale(data): {
-          const newLocale = await changeChatLocale(chatId, userId, data)
+    const event = await this.trpc.event.update.query({ userId, period })
 
-          await Bot.deleteMessage(chatId, messageIdString)
+    const { date, time, datesMessageId, timeMessageId } = event as Required<Event>
 
-          await sendMessage(message, t({ phrase: 'locale_set', locale: newLocale }))
-          break
-        }
+    await this.delete(msg, timeMessageId)
+    await this.delete(msg, datesMessageId)
 
-        case isUsualDate(data): {
-          await trpc.lessons.update.query({ userId, date: data })
+    await this.send(msg, 'message.result', {
+      time: `${time}:00`,
+      period: getPeriodButtonText(period, locale).toLowerCase(),
+      date: dayjs(date).toDate().toLocaleDateString(locale),
+    })
+  }
 
-          const busyHours = await trpc.lessons.getBusyHours.query(data)
+  setLocale = async (msg: Message, data: string) => {
+    const { userId } = await this.getMessageInfo(msg)
+    const { locale } = localeCD.get(data)
 
-          await Bot.deleteMessage(chatId, messageIdString)
+    await this.delete(msg)
 
-          await sendMessage(message, t({ phrase: 'date', locale }), {
+    await this.changeChatLocale(userId, locale)
+
+    await this.send(msg, 'locale.set')
+  }
+
+  sendLocales = async (msg: Message) => {
+    await this.send(msg, 'commands.change_locale.message', undefined, {
+      reply_markup: { inline_keyboard: getLocalesInlineKeyboard() },
+    })
+  }
+
+  sendDates = async (msg: Message, startFrom: string | undefined) => {
+    const { locale } = await this.getMessageInfo(msg)
+
+    await this.send(msg, 'commands.create.message', undefined, {
+      reply_markup: { inline_keyboard: getCreateEventDatesInlineKeyboard(startFrom, locale) },
+    })
+  }
+
+  sendTime = async (msg: Message, data: string) => {
+    const { userId } = await this.getMessageInfo(msg)
+
+    await this.delete(msg)
+
+    const { date } = eventCreateDateCD.get(data)
+
+    const busyHours = await this.trpc.event.getDateBusyHours.query(date)
+
+    const { message_id: datesMessageId } = await this.send(msg, 'selected.date', { date })
+
+    await this.send(msg, 'message.time', undefined, {
+      reply_markup: {
+        inline_keyboard: getTimeInlineKeyboard(busyHours),
+      },
+    })
+
+    await this.trpc.event.update.query({ userId, date, dayInWeek: dayjs(date).day(), datesMessageId })
+  }
+
+  sendPeriods = async (msg: Message, data: string) => {
+    const { userId, locale } = await this.getMessageInfo(msg)
+    const { time } = eventTimeCD.get(data)
+
+    await this.delete(msg)
+
+    const { message_id: timeMessageId } = await this.send(msg, 'selected.time', { time: `${time}:00` })
+
+    await this.send(msg, 'message.period', undefined, {
+      reply_markup: { inline_keyboard: getPeriodsInlineKeyboard(locale) },
+    })
+
+    await this.trpc.event.update.query({ userId, time: +time, timeMessageId })
+  }
+
+  sendUserEvents = async (msg: Message) => {
+    const { userId, locale } = await this.getMessageInfo(msg)
+
+    const events = await this.trpc.event.readAll.query({ userId })
+
+    await this.send(msg, 'commands.edit.message', undefined, {
+      reply_markup: { inline_keyboard: getEventsInlineKeyboard(events as Event[], locale) },
+    })
+  }
+
+  sendEventActions = async (msg: Message, data: string) => {
+    const { locale } = await this.getMessageInfo(msg)
+    const { id } = eventIdCD.get(data)
+
+    await this.delete(msg)
+
+    await this.send(msg, 'message.event_actions', undefined, {
+      reply_markup: { inline_keyboard: getEventActionsInlineKeyboard(id, locale) },
+    })
+  }
+
+  handleActions = async (msg: Message, data: string) => {
+    const { locale } = await this.getMessageInfo(msg)
+    const { action, id } = eventActionCD.get<{ id: ObjectId & string; action: Actions }>(data)
+
+    await this.delete(msg)
+
+    const { date: eventDate, period } = await this.trpc.event.readById.query(id)
+
+    switch (action) {
+      case Actions.Cancel: {
+        if (period === Periods.Once) {
+          await this.trpc.event.delete.query(id)
+        } else {
+          await this.send(msg, 'actions.cancel.message', undefined, {
             reply_markup: {
-              inline_keyboard: getTimeInlineKeyboard(busyHours),
+              inline_keyboard: getDatesKeyboard(
+                eventDate,
+                locale,
+                (date) => eventActionDateCD.fill({ id, date, action }),
+                7
+              ),
             },
           })
-          break
         }
-
-        case isUsualTime(data): {
-          await trpc.lessons.update.query({ userId, time: +data })
-
-          await Bot.deleteMessage(chatId, messageIdString)
-
-          await sendMessage(message, t({ phrase: 'period', locale }), {
-            reply_markup: { inline_keyboard: getPeriodsInlineKeyboard(locale) },
-          })
-          break
-        }
-
-        case isLessonPeriod(data): {
-          const lesson = await trpc.lessons.update.query({ userId, period: data as LessonPeriod })
-
-          await Bot.deleteMessage(chatId, messageIdString)
-
-          const { date, time, period } = lesson
-
-          await sendMessage(
-            message,
-            t(
-              { phrase: 'result', locale },
-              {
-                time: `${time}:00`,
-                period: getButtonTextByPeriod(period, locale).toLowerCase(),
-                date: new Date(date).toLocaleDateString(locale),
-              }
-            )
-          )
-          break
-        }
-
-        default: {
-          await sendMessage(message, t({ phrase: 'unknown_command', locale }))
-        }
+        break
       }
-    } catch (e) {
-      console.info('Error: ', e)
-    }
-  })
-}
 
-startBot()
-  .then(() => {
-    console.log('Bot is running')
-  })
-  .catch(console.log)
+      default:
+        action satisfies never
+    }
+  }
+
+  sendActionResult = async (msg: Message, data: string) => {
+    const { locale } = await this.getMessageInfo(msg)
+
+    await this.delete(msg)
+
+    const { action, id, date } = eventActionDateCD.get<{
+      id: ObjectId & string
+      date: string
+      action: Actions
+    }>(data)
+
+    switch (action) {
+      case Actions.Cancel: {
+        await this.trpc.event.addExceptionDate.query({ _id: id, date })
+        break
+      }
+
+      default:
+        action satisfies never
+    }
+
+    await this.send(msg, `actions.${action}.success`, { date: localizeDate(date, locale) })
+  }
+}

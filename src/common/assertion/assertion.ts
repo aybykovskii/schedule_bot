@@ -1,13 +1,13 @@
-import { AwaitedRequestResponse, SuccessResponse } from '@/types'
+import { Response, SucceedResponse } from '@/types'
 
 import { AppError } from '../error'
 
 export class Assertion {
-  private static assert(type: 'client', variable: unknown | undefined, message?: string): asserts variable is string
+  private static assert(type: 'client', variable: unknown, message?: string): asserts variable is string
   private static assert<ResponseBody>(
     type: 'server',
-    variable: AwaitedRequestResponse<ResponseBody>
-  ): asserts variable is SuccessResponse<ResponseBody>
+    variable: Response<ResponseBody>
+  ): asserts variable is SucceedResponse<ResponseBody>
 
   private static assert(type: 'client' | 'server', variable: unknown, message?: string) {
     if (type === 'client') {
@@ -25,11 +25,15 @@ export class Assertion {
     }
   }
 
-  static client<T extends unknown | undefined>(variable: T, message: string): asserts variable is NonNullable<T> {
+  static simple<T>(variable: T): asserts variable is NonNullable<T> {
+    Assertion.assert('client', variable)
+  }
+
+  static client<T>(variable: T, message: string): asserts variable is NonNullable<T> {
     Assertion.assert('client', variable, message)
   }
 
-  static server<T>(variable: AwaitedRequestResponse<T>): asserts variable is SuccessResponse<T> {
+  static server<T>(variable: Response<T>): asserts variable is SucceedResponse<T> {
     Assertion.assert('server', variable)
   }
 }

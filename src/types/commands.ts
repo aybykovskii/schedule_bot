@@ -1,5 +1,7 @@
 export enum Commands {
-  START = '/start',
-  CREATE_A_LESSON = '/create_a_lesson',
-  CHANGE_LOCALE = '/change_locale',
+  START = 'start',
+  INFO = 'info',
+  CREATE = 'create',
+  EDIT = 'edit',
+  CHANGE_LOCALE = 'change_locale',
 }
