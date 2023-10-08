@@ -1,20 +1,52 @@
 {
-	"title": "🇺🇸 English",
-  "start": "Hi, this is a chatbot for recording classes in English and Italian. There is a list of available commands at the bottom:)",
-  "date": "Select the date of the lesson",
-  "time": "Select the time of the lesson",
-	"period": "How often do you want to practice?",
-  "result": "Your lesson will take place on {date} at {time}.\n You have indicated that you want to study {period}.\n Teach will contact you via Telegram.",
-  "locale": "Select the language in which you want to continue communication",
-	"locale_set": "Great, the language is set!",
-	"unknown_command": "Unfortunately, this command is still unknown to me, select one from the list and I will be happy to help you)",
+  "unknown_command": "Unfortunately, this command is still unknown to me, select one from the list and I will be happy to help you)",
+  "locale": {
+    "name": "🇺🇸 English",
+    "set": "Great, the language is set!"
+  },
+  "message": {
+    "time": "Select time",
+    "period": "How often do you want to exercise?",
+    "result": "Your class will take place on {date} at {time}.\nYou indicated that you want to study {period}.\nThe teacher will contact you via Telegram.",
+    "event_short_info_weekly": "{period}, {day}, {time}",
+    "event_short_info_once": "{period}, {day}, {date}, {time}",
+    "event_actions": "What do you want to do with the selected event?"
+  },
+  "selected": {
+    "date": "You have selected a date {date}",
+    "time": "You have chosen the time {time}"
+  },
   "commands": {
-    "start": "Start bot",
-    "change_locale": "Change locale",
-    "create_a_lesson": "Create a lesson"
+    "start": {
+      "description": "Start bot",
+      "message": "Hi, this is a chatbot for recording classes in English and Italian.\nThere is a list of available commands at the bottom:)"
+    },
+    "change_locale": {
+      "description": "Change locale",
+      "message": "Select the language in which you want to continue communication"
+    },
+    "create": {
+      "description": "Create an event",
+      "message": "Select event date"
+    },
+    "edit": {
+      "description": "Edit event",
+      "message": "Select the event you want to edit"
+    },
+    "info": {
+      "description": "Bot information",
+      "message": "Bot for creating schedule entries\nAuthor: Bykovskii Aleksei(@aybykovskii)"
+    }
   },
   "periods": {
-		"once": "Once",
-		"weekly": "Weekly"
-	}
+    "once": "Once",
+    "weekly": "Weekly"
+  },
+  "actions": {
+    "cancel": {
+      "title": "Cancel",
+      "message": "Select the date you want to cancel the event",
+      "success": "Event {date} canceled"
+    }
+  }
 }

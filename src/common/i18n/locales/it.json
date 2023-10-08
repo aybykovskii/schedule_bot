@@ -1,20 +1,52 @@
 {
-	"title": "🇮🇹 Italiano",
-	"start": "Ciao, questo è un chatbot per iscriversi a lezioni di inglese e italiano. In fondo c'è un elenco di comandi disponibili:)",
-  "date": "Scegli una data di lezione",
-  "time": "Scegli l'ora della tua lezione",
-	"period": "Quanto spesso vuoi esercitarti?",
-	"result": "La tua lezione si svolgerà l ' {date} alle {time}.\nHai indicato che vuoi esercitarti {period}.\nInsegnare ti contatterà tramite Telegram",
-  "locale": "Scegli la lingua in cui vuoi continuare a comunicare",
-	"locale_set": "Ottimo, la lingua è impostata!",
-	"unknown_command": "Sfortunatamente, questo comando è ancora sconosciuto a me, Scegli una lista e sarò felice di aiutarti)",
-	"commands": {
-		"start": "Avvia il bot",
-    "change_locale": "Cambia lingua",
-		"create_a_lesson": "Crea lezione"
-	},
-	"periods": {
-		"once": "Una volta",
-		"weekly": "Settimanalmente"
-	}
+  "unknown_command": "Purtroppo questo comando mi è ancora sconosciuto, selezionane uno dalla lista e sarò felice di aiutarti)",
+  "locale": {
+    "name": "🇮🇹 Italiano",
+    "set": "Ottimo, la lingua è installata!"
+  },
+  "message": {
+    "time": "Seleziona l'ora",
+    "period": "Quanto spesso vuoi esercitarti?",
+    "result": "La tua lezione si svolgerà il {date} alle {time}.\nHai indicato che vuoi studiare {periodo}.\nL'insegnante ti contatterà tramite Telegram.",
+    "event_short_info_weekly": "{period}, {day}, {time}",
+    "event_short_info_once": "{period}, {day}, {date}, {time}",
+    "event_actions": "Cosa vuoi fare con l'evento selezionato?"
+  },
+  "selected": {
+    "date": "Hai selezionato una data {data}",
+    "time": "Hai scelto l'orario {time}"
+  },
+  "commands": {
+    "start": {
+      "description": "Avvia il bot",
+      "message": "Ciao, questo è un chatbot per registrarsi alle lezioni di inglese e italiano.\nDi seguito è riportato un elenco dei comandi disponibili :)"
+    },
+    "change_locale": {
+      "description": "Cambia lingua",
+      "message": "Seleziona la lingua in cui desideri continuare a comunicare"
+    },
+    "create": {
+      "description": "Crea un evento",
+      "message": "Seleziona la data dell'evento"
+    },
+    "edit": {
+      "description": "Modifica evento",
+      "message": "Seleziona l'evento che desideri modificare"
+    },
+    "info": {
+      "description": "Informazioni sul bot",
+      "message": "Bot per la creazione di voci di pianificazione\nAutore: Bykovskii Aleksei(@aybykovskii)"
+    }
+  },
+  "periods": {
+    "once": "Una volta",
+    "weekly": "Settimanalmente"
+  },
+  "actions": {
+    "cancel": {
+      "title": "Annulla",
+      "message": "Seleziona la data in cui desideri annullare l'evento",
+      "success": "Evento {date} annullato"
+    }
+  }
 }
