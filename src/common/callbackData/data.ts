@@ -4,7 +4,7 @@ export const localeCD = new CallbackData('locale: {locale}')
 
 export const eventCreateDateCD = new CallbackData('eventCreateDate: {date}')
 
-export const eventActionDateCD = new CallbackData('eventActionDate: {action}_{id}_{date}')
+export const eventActionDateCD = new CallbackData('evActionDate: {action}_{id}_{date}')
 
 export const eventTimeCD = new CallbackData('eventTime: {time}')
 
