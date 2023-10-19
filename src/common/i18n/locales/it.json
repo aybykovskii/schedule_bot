@@ -48,5 +48,6 @@
       "message": "Seleziona la data in cui desideri annullare l'evento",
       "success": "Evento {date} annullato"
     }
-  }
+  },
+  "error": "Si è verificato un errore, riprova più tardi o segnala l'errore all'autore del bot.\nLe informazioni sull'autore possono essere trovate nel comando /info"
 }

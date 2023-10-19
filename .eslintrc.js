@@ -1,5 +1,6 @@
 const path = require('path')
 
+// TODO: Fix config
 module.exports = {
   settings: {
     'import/parsers': {
@@ -35,7 +36,7 @@ module.exports = {
     '@typescript-eslint/ban-ts-comment': 'off',
     '@typescript-eslint/ban-types': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
-    'no-console': 'off',
+    'no-console': 'warn',
     '@typescript-eslint/no-unused-vars': [
       'error',
       {

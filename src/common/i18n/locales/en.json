@@ -48,5 +48,6 @@
       "message": "Select the date you want to cancel the event",
       "success": "Event {date} canceled"
     }
-  }
+  },
+  "error": "An error occurred, try again later, or report the error to the bot author.\n\nInformation about the author can be found in the /info command"
 }
