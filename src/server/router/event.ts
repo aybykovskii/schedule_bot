@@ -44,8 +44,8 @@ export const eventRouter = t.router({
   }),
 
   update: procedure
-    .input(EventSchema.pick({ userId: true }).and(EventSchema.deepPartial()))
-    .output(EventSchema.deepPartial())
+    .input(EventSchema.pick({ userId: true }).and(EventSchema.partial()))
+    .output(EventSchema.partial())
     .query(async ({ input: { userId, ...event } }) => {
       const result = await eventService.findUnfilled(userId)
 

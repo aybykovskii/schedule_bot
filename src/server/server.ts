@@ -8,6 +8,8 @@ import { Log, loggerMiddleware } from '@/common/logger'
 
 import { rootRouter } from './router'
 
+export { RootRouter } from './router'
+
 const app = express()
 
 mongoose
@@ -23,7 +25,13 @@ app.use(loggerMiddleware)
 app.use(express.json())
 app.use(i18n.init)
 
-app.use('/trpc', createExpressMiddleware({ router: rootRouter }))
+app.use(
+  '/trpc',
+  createExpressMiddleware({
+    router: rootRouter,
+    onError: Log.error,
+  })
+)
 
 app
   .listen(env.SERVER_PORT, () => {
@@ -32,5 +40,3 @@ app
   .on('error', (e) => {
     Log.error(`Catch error while listening on port ${env.SERVER_PORT}: ${e}`)
   })
-
-export { RootRouter } from './router'

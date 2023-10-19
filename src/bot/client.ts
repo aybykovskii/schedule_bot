@@ -139,7 +139,7 @@ const startBot = async () => {
         }
       }
     } catch (e) {
-      Log.error('Error: ', e)
+      Log.error(e)
     }
   })
 }

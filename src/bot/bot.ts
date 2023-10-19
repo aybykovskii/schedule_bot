@@ -30,11 +30,14 @@ import {
   localeCD,
   eventActionDateCD,
 } from '@/common/callbackData'
+import { AppError } from '@/common/error'
+
+type ClientTRPC = ReturnType<typeof createTRPCProxyClient<RootRouter>>
 
 export class Bot extends TelegramBot {
-  trpc: ReturnType<typeof createTRPCProxyClient<RootRouter>>
+  trpc: ClientTRPC
 
-  constructor(token: string, trpc: ReturnType<typeof createTRPCProxyClient<RootRouter>>) {
+  constructor(token: string, trpc: ClientTRPC) {
     super(token, { polling: true })
 
     this.trpc = trpc
@@ -63,7 +66,13 @@ export class Bot extends TelegramBot {
   ) => {
     const { userId, locale } = await this.getMessageInfo(msg)
 
-    return this.sendMessage(userId, t({ phrase, locale }, phraseReplaces ?? {}), options)
+    try {
+      return await this.sendMessage(userId, t({ phrase, locale }, phraseReplaces ?? {}), options)
+    } catch (error) {
+      await this.sendMessage(userId, t({ phrase: 'error', locale }))
+
+      throw new AppError('client', `${error}`)
+    }
   }
 
   delete = async (msg: Message, id?: number) => {
