@@ -35,6 +35,14 @@ export const eventRouter = t.router({
     return readResult.data
   }),
 
+  findUnfilled: procedure.input(EventSchema.pick({ userId: true })).query(async ({ input: { userId } }) => {
+    const readResult = await eventService.findUnfilled(userId)
+
+    Assertion.server(readResult)
+
+    return readResult.data
+  }),
+
   readAll: procedure.input(EventSchema.pick({ userId: true })).query(async ({ input: { userId } }) => {
     const readResult = await eventService.readByUserId(userId, true)
 
@@ -116,4 +124,14 @@ export const eventRouter = t.router({
 
     return result.data.map((event) => event.time)
   }),
+
+  getTimeStampAvailablePeriods: procedure
+    .input(EventSchema.pick({ date: true, time: true, dayInWeek: true }))
+    .query(async ({ input }) => {
+      const result = await eventService.findByDayAndTime(input)
+
+      Assertion.server(result)
+
+      return result.data.length ? [Periods.Once] : Object.values(Periods)
+    }),
 })

@@ -172,10 +172,13 @@ export class Bot extends TelegramBot {
 
     await this.delete(msg)
 
+    const { date, dayInWeek } = await this.trpc.event.findUnfilled.query({ userId })
+    const periods = await this.trpc.event.getTimeStampAvailablePeriods.query({ date, time: +time, dayInWeek })
+
     const { message_id: timeMessageId } = await this.send(msg, 'selected.time', { time: `${time}:00` })
 
     await this.send(msg, 'message.period', undefined, {
-      reply_markup: { inline_keyboard: getPeriodsInlineKeyboard(locale) },
+      reply_markup: { inline_keyboard: getPeriodsInlineKeyboard(locale, periods) },
     })
 
     await this.trpc.event.update.query({ userId, time: +time, timeMessageId })

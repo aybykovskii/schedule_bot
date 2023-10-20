@@ -26,17 +26,15 @@ export const getDatesKeyboard = (
   locale: Locales,
   cb: (date: string) => string,
   step = 1
-) => {
+): Keyboard => {
   const dates = getDatesArray(startFrom, step)
 
-  const buttons: Keyboard = dates.map((date) => [
+  return dates.map((date) => [
     {
       callback_data: cb(date),
       text: `📅 ${localizeDate(date, locale)}`,
     },
   ])
-
-  return buttons
 }
 
 export const getCreateEventDatesInlineKeyboard = (startFrom: string | undefined, locale: Locales) => {
@@ -59,46 +57,38 @@ export const getCreateEventDatesInlineKeyboard = (startFrom: string | undefined,
   return datesButtons.concat(isSameDates ? [[next]] : [[prev, next]])
 }
 
-export const getTimeInlineKeyboard = (busyHours: number[]) => {
+export const getTimeInlineKeyboard = (busyHours: number[]): Keyboard => {
   const availableHours = new Array(+env.END_HOUR - +env.START_HOUR)
     .fill(0)
     .map((_, i) => +env.START_HOUR + i)
     .filter((hour) => !busyHours.includes(hour))
 
-  const hours: Keyboard = availableHours.map((hour) => [
+  return availableHours.map((hour) => [
     {
       callback_data: eventTimeCD.fill({ time: hour }),
       text: `🕘 ${hour}:00`,
     },
   ])
-
-  return hours
 }
 
-export const getPeriodsInlineKeyboard = (locale: Locales) => {
-  const periods: Keyboard = Object.values(Periods).map((period) => [
+export const getPeriodsInlineKeyboard = (locale: Locales, periods: Periods[]): Keyboard =>
+  periods.map((period) => [
     {
       callback_data: eventPeriodCD.fill({ period }),
       text: getPeriodButtonText(period, locale),
     },
   ])
 
-  return periods
-}
-
-export const getLocalesInlineKeyboard = () => {
-  const locales: Keyboard = Object.values(Locales).map((locale) => [
+export const getLocalesInlineKeyboard = (): Keyboard =>
+  Object.values(Locales).map((locale) => [
     {
       callback_data: localeCD.fill({ locale }),
       text: t({ phrase: 'locale.name', locale }),
     },
   ])
 
-  return locales
-}
-
-export const getEventsInlineKeyboard = (events: Event[], locale: Locales) => {
-  const eventButtons: Keyboard = events.map(({ _id: id, date, period, time }) => [
+export const getEventsInlineKeyboard = (events: Event[], locale: Locales): Keyboard =>
+  events.map(({ _id: id, date, period, time }) => [
     {
       callback_data: eventIdCD.fill({ id }),
       text: t(
@@ -113,16 +103,10 @@ export const getEventsInlineKeyboard = (events: Event[], locale: Locales) => {
     },
   ])
 
-  return eventButtons
-}
-
-export const getEventActionsInlineKeyboard = (eventId: string, locale: Locales) => {
-  const actionsButtons: Keyboard = Object.values(Actions).map((action) => [
+export const getEventActionsInlineKeyboard = (eventId: string, locale: Locales): Keyboard =>
+  Object.values(Actions).map((action) => [
     {
       callback_data: eventActionCD.fill({ action, id: eventId }),
       text: t({ phrase: `actions.${action}.title`, locale }),
     },
   ])
-
-  return actionsButtons
-}
