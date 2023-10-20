@@ -36,7 +36,7 @@ export class EventService {
     return { success: true, data: result.toObject() }
   }
 
-  findUnfilled = async (userId: UserId): PromiseResponse<Partial<Event>> => {
+  findUnfilled = async (userId: UserId): PromiseResponse<Event> => {
     const result = await EventModel.findOne({ userId, isFilled: false })
 
     if (!result || result.errors) {
@@ -66,6 +66,23 @@ export class EventService {
           exceptionDates: { $ne: date },
           dayInWeek: day,
         },
+      ],
+    })
+
+    return { success: true, data }
+  }
+
+  findByDayAndTime = async ({
+    date,
+    time,
+    dayInWeek,
+  }: Pick<Event, 'date' | 'time' | 'dayInWeek'>): PromiseResponse<Event[]> => {
+    const data = await EventModel.find({
+      isFilled: true,
+      $or: [
+        { period: Periods.Once, date, time },
+        { period: Periods.Weekly, dayInWeek, time },
+        { period: Periods.Weekly, date, time },
       ],
     })
 
