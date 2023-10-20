@@ -1,7 +1,7 @@
-import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
 import dayjs from 'dayjs'
-
-import '@/common/polyfill/polyfill'
+import { fetch as undiciFetch } from 'undici'
+import { FetchEsque } from '@trpc/client/dist/internals/types'
+import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
 
 import { Commands } from '@/types'
 import { env } from '@/common/environment'
@@ -25,7 +25,12 @@ import {
 import { Bot } from './bot'
 
 const trpc = createTRPCProxyClient<RootRouter>({
-  links: [httpBatchLink({ url: `http://localhost:${env.SERVER_PORT}/trpc` })],
+  links: [
+    httpBatchLink({
+      url: `http://localhost:${env.SERVER_PORT}/trpc`,
+      fetch: undiciFetch as FetchEsque,
+    }),
+  ],
 })
 
 const bot = new Bot(env.TG_BOT_TOKEN, trpc)
