@@ -1,1 +1,1 @@
-# Schedule bot
+# Schedule telegram bot
