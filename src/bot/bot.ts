@@ -62,7 +62,7 @@ export class Bot extends TelegramBot {
     msg: Message,
     phrase: Phrase,
     phraseReplaces?: Record<PropertyKey, string | number> | undefined,
-    options?: TelegramBot.SendMessageOptions
+    options?: TelegramBot.SendMessageOptions,
   ) => {
     const { userId, locale } = await this.getMessageInfo(msg)
 
@@ -189,8 +189,12 @@ export class Bot extends TelegramBot {
 
     const events = await this.trpc.event.readAll.query({ userId })
 
+    const editableEvents = events.filter(
+      ({ period, date }) => period === Periods.Weekly || dayjs(date).isAfter(dayjs()),
+    ) as Event[]
+
     await this.send(msg, 'commands.edit.message', undefined, {
-      reply_markup: { inline_keyboard: getEventsInlineKeyboard(events as Event[], locale) },
+      reply_markup: { inline_keyboard: getEventsInlineKeyboard(editableEvents, locale) },
     })
   }
 
@@ -224,7 +228,7 @@ export class Bot extends TelegramBot {
                 eventDate,
                 locale,
                 (date) => eventActionDateCD.fill({ id, date, action }),
-                7
+                7,
               ),
             },
           })

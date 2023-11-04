@@ -5,7 +5,7 @@ import { Locales } from '@/types'
 import { DATE_FORMAT } from './constants'
 
 export const localizeDate = (date: Date | number | string, locale: Locales) =>
-  Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric' }).format(dayjs(date).toDate())
+  Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric', weekday: 'long' }).format(dayjs(date).toDate())
 
 export const getDatesArray = (startFrom: string | undefined, step = 1) => {
   const startDate = dayjs(startFrom)

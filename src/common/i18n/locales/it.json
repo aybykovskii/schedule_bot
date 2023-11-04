@@ -9,7 +9,7 @@
     "period": "Quanto spesso vuoi esercitarti?",
     "result": "La tua lezione si svolgerà il {date} alle {time}.\nHai indicato che vuoi studiare {periodo}.\nL'insegnante ti contatterà tramite Telegram.",
     "event_short_info_weekly": "{period}, {day}, {time}",
-    "event_short_info_once": "{period}, {day}, {date}, {time}",
+    "event_short_info_once": "{period}, {date}, {time}",
     "event_actions": "Cosa vuoi fare con l'evento selezionato?"
   },
   "selected": {

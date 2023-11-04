@@ -25,7 +25,7 @@ export const getDatesKeyboard = (
   startFrom: string | undefined,
   locale: Locales,
   cb: (date: string) => string,
-  step = 1
+  step = 1,
 ): Keyboard => {
   const dates = getDatesArray(startFrom, step)
 
@@ -98,7 +98,7 @@ export const getEventsInlineKeyboard = (events: Event[], locale: Locales): Keybo
           day: dayjs(date).toDate().toLocaleDateString(locale, { weekday: 'long' }),
           date: localizeDate(date, locale),
           time: `${time}:00`,
-        }
+        },
       ),
     },
   ])
