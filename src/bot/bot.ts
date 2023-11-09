@@ -162,7 +162,6 @@ export class Bot extends TelegramBot {
         inline_keyboard: getTimeInlineKeyboard(busyHours),
       },
     })
-    console.log({ date, dayInWeek: dayjs(date).day() })
     await this.trpc.event.update.query({ userId, date, dayInWeek: dayjs(date).day(), datesMessageId })
   }
 
@@ -173,7 +172,6 @@ export class Bot extends TelegramBot {
     await this.delete(msg)
 
     const { date, dayInWeek } = await this.trpc.event.findUnfilled.query({ userId })
-    console.log({ date, dayInWeek: dayjs(date).day(), userId, time })
     const periods = await this.trpc.event.getTimeStampAvailablePeriods.query({ date, time: +time, dayInWeek })
 
     const { message_id: timeMessageId } = await this.send(msg, 'selected.time', { time: `${time}:00` })
