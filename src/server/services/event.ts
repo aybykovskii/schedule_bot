@@ -91,8 +91,8 @@ export class EventService {
 
   update = async (id: ModelId, event: Partial<Event>): PromiseResponse<Partial<Event>> => {
     const newEventFields = Object.entries(event).reduce(
-      (acc, [key, value]) => (!value ? acc : { ...acc, [key]: value }),
-      {} as Partial<Event>
+      (acc, [key, value]) => (!value && typeof value !== 'number' ? acc : { ...acc, [key]: value }),
+      {} as Partial<Event>,
     )
 
     const result = await EventModel.findOneAndUpdate({ _id: id }, { ...newEventFields }, { new: true })

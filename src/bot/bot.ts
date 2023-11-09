@@ -10,7 +10,7 @@ import { getUserLocale } from '@/common/locale'
 import { getBotCommands } from '@/common/commands'
 import { Phrase, t } from '@/common/i18n'
 import { getPeriodButtonText } from '@/common/event'
-import { localizeDate } from '@/common/date'
+import { DATE_FORMAT, localizeDate } from '@/common/date'
 import { Event } from '@/common/schemas'
 import {
   getCreateEventDatesInlineKeyboard,
@@ -218,6 +218,12 @@ export class Bot extends TelegramBot {
 
     const { date: eventDate, period } = await this.trpc.event.readById.query(id)
 
+    let startDate = eventDate
+
+    while (dayjs(startDate).isBefore(dayjs())) {
+      startDate = dayjs(startDate).add(7, 'days').format(DATE_FORMAT)
+    }
+
     switch (action) {
       case Actions.Cancel: {
         if (period === Periods.Once) {
@@ -226,7 +232,7 @@ export class Bot extends TelegramBot {
           await this.send(msg, 'actions.cancel.message', undefined, {
             reply_markup: {
               inline_keyboard: getDatesKeyboard(
-                eventDate,
+                startDate,
                 locale,
                 (date) => eventActionDateCD.fill({ id, date, action }),
                 7,
