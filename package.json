@@ -5,17 +5,10 @@
   "author": "Alexey Bykovsky<alesha.byk@gamil.com>",
   "main": "src/index.ts",
   "scripts": {
-    "client:start": "nodemon src/bot/client",
-    "server:start": "nodemon src/server/server"
+    "client": "ts-node src/bot/client",
+    "server": "ts-node src/server/server"
   },
   "license": "ISC",
-  "nodemonConfig": {
-    "ignore": [
-      "node_modules"
-    ],
-    "ext": "ts",
-    "exec": "node -r tsconfig-paths/register -r ts-node/register"
-  },
   "dependencies": {
     "@trpc/client": "^10.38.1",
     "@trpc/server": "^10.38.1",
@@ -25,13 +18,8 @@
     "googleapis": "^126.0.1",
     "i18n": "^0.15.1",
     "mongoose": "^7.5.0",
-    "node-telegram-bot-api": "0.57.0",
-    "nodemon": "^2.0.19",
-    "qs": "^6.10.5",
+    "node-telegram-bot-api": "^0.63.0",
     "rrule": "^2.7.2",
-    "ts-node": "^10.8.1",
-    "tsconfig-paths": "^4.0.0",
-    "typescript": "^5.2.2",
     "undici": "^5.23.0",
     "zod": "^3.22.2"
   },
@@ -44,6 +32,9 @@
     "eslint": "^8.19.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.1",
-    "prettier": "^3.0.3"
+    "prettier": "^3.0.3",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.3.2"
   }
 }

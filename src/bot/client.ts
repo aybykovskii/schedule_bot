@@ -35,6 +35,8 @@ const trpc = createTRPCProxyClient<RootRouter>({
 
 const bot = new Bot(env.TG_BOT_TOKEN, trpc)
 
+bot.setChatMenuButton({ menu_button: { type: 'commands' } })
+
 const startBot = async () => {
   bot.on('message', async (message) => {
     const { text, userId, locale } = await bot.getMessageInfo(message)
@@ -106,9 +108,7 @@ const startBot = async () => {
 
           await bot.delete(message)
 
-          const startFrom = dayjs(date).subtract(7, 'days').format(DATE_FORMAT)
-
-          await bot.sendDates(message, startFrom)
+          await bot.sendDates(message, dayjs(date).format(DATE_FORMAT), 'subtract')
           break
         }
 
@@ -117,9 +117,7 @@ const startBot = async () => {
 
           await bot.delete(message)
 
-          const startFrom = dayjs(date).add(7, 'days').format(DATE_FORMAT)
-
-          await bot.sendDates(message, startFrom)
+          await bot.sendDates(message, dayjs(date).format(DATE_FORMAT))
           break
         }
 

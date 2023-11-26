@@ -2,5 +2,8 @@
   "extends": ["@aybykovskii/eslint-config"],
   "parserOptions": {
     "project": "./tsconfig.json"
+  },
+  "rules": {
+    "no-plusplus": "off"
   }
 }

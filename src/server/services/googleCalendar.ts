@@ -178,5 +178,5 @@ export const googleCalendarService = new GoogleCalendarService(
   env.GOOGLE_ACCOUNT_EMAIL,
   keys.GOOGLE_PRIVATE_KEY,
   env.GOOGLE_SCOPE,
-  env.GOOGLE_CALENDAR_ID
+  env.GOOGLE_CALENDAR_ID,
 )

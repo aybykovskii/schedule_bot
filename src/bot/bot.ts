@@ -1,5 +1,5 @@
 import { createTRPCProxyClient } from '@trpc/client'
-import TelegramBot, { Message } from 'node-telegram-bot-api'
+import TelegramBot, { InlineKeyboardButton, Message, SendMessageOptions } from 'node-telegram-bot-api'
 import dayjs from 'dayjs'
 import { ObjectId } from 'mongoose'
 
@@ -12,15 +12,7 @@ import { Phrase, t } from '@/common/i18n'
 import { getPeriodButtonText } from '@/common/event'
 import { DATE_FORMAT, localizeDate } from '@/common/date'
 import { Event } from '@/common/schemas'
-import {
-  getCreateEventDatesInlineKeyboard,
-  getDatesKeyboard,
-  getEventActionsInlineKeyboard,
-  getEventsInlineKeyboard,
-  getLocalesInlineKeyboard,
-  getPeriodsInlineKeyboard,
-  getTimeInlineKeyboard,
-} from '@/common/keyboard'
+import { inlineKeyboard } from '@/common/keyboard'
 import {
   eventActionCD,
   eventCreateDateCD,
@@ -62,12 +54,16 @@ export class Bot extends TelegramBot {
     msg: Message,
     phrase: Phrase,
     phraseReplaces?: Record<PropertyKey, string | number> | undefined,
-    options?: TelegramBot.SendMessageOptions,
+    keyboard?: InlineKeyboardButton[][],
   ) => {
     const { userId, locale } = await this.getMessageInfo(msg)
 
     try {
-      return await this.sendMessage(userId, t({ phrase, locale }, phraseReplaces ?? {}), options)
+      return await this.sendMessage(
+        userId,
+        t({ phrase, locale }, phraseReplaces ?? {}),
+        inlineKeyboard ? ({ reply_markup: { inline_keyboard: keyboard } } as SendMessageOptions) : undefined,
+      )
     } catch (error) {
       await this.sendMessage(userId, t({ phrase: 'error', locale }))
 
@@ -98,7 +94,7 @@ export class Bot extends TelegramBot {
 
     await this.trpc.event.create.query({ name, userId, tg: `@${username}` })
 
-    await this.sendDates(msg, undefined)
+    await this.sendDates(msg)
   }
 
   submitEvent = async (msg: Message, data: string) => {
@@ -132,18 +128,18 @@ export class Bot extends TelegramBot {
     await this.send(msg, 'locale.set')
   }
 
-  sendLocales = async (msg: Message) => {
-    await this.send(msg, 'commands.change_locale.message', undefined, {
-      reply_markup: { inline_keyboard: getLocalesInlineKeyboard() },
-    })
-  }
+  sendLocales = async (msg: Message) =>
+    this.send(msg, 'commands.change_locale.message', undefined, inlineKeyboard.locales)
 
-  sendDates = async (msg: Message, startFrom: string | undefined) => {
+  sendDates = async (msg: Message, startFrom?: string | undefined, action: 'add' | 'subtract' = 'add') => {
     const { locale } = await this.getMessageInfo(msg)
 
-    await this.send(msg, 'commands.create.message', undefined, {
-      reply_markup: { inline_keyboard: getCreateEventDatesInlineKeyboard(startFrom, locale) },
-    })
+    await this.send(
+      msg,
+      'commands.create.message',
+      undefined,
+      inlineKeyboard.datesWithButtons({ from: startFrom, locale, action }),
+    )
   }
 
   sendTime = async (msg: Message, data: string) => {
@@ -157,11 +153,7 @@ export class Bot extends TelegramBot {
 
     const { message_id: datesMessageId } = await this.send(msg, 'selected.date', { date })
 
-    await this.send(msg, 'message.time', undefined, {
-      reply_markup: {
-        inline_keyboard: getTimeInlineKeyboard(busyHours),
-      },
-    })
+    await this.send(msg, 'message.time', undefined, inlineKeyboard.time({ exceptions: busyHours }))
     await this.trpc.event.update.query({ userId, date, dayInWeek: dayjs(date).day(), datesMessageId })
   }
 
@@ -176,9 +168,7 @@ export class Bot extends TelegramBot {
 
     const { message_id: timeMessageId } = await this.send(msg, 'selected.time', { time: `${time}:00` })
 
-    await this.send(msg, 'message.period', undefined, {
-      reply_markup: { inline_keyboard: getPeriodsInlineKeyboard(locale, periods) },
-    })
+    await this.send(msg, 'message.period', undefined, inlineKeyboard.periods({ locale, periods }))
 
     await this.trpc.event.update.query({ userId, time: +time, timeMessageId })
   }
@@ -192,20 +182,16 @@ export class Bot extends TelegramBot {
       ({ period, date }) => period === Periods.Weekly || dayjs(date).isAfter(dayjs()),
     ) as Event[]
 
-    await this.send(msg, 'commands.edit.message', undefined, {
-      reply_markup: { inline_keyboard: getEventsInlineKeyboard(editableEvents, locale) },
-    })
+    await this.send(msg, 'commands.edit.message', undefined, inlineKeyboard.events({ events: editableEvents, locale }))
   }
 
   sendEventActions = async (msg: Message, data: string) => {
     const { locale } = await this.getMessageInfo(msg)
-    const { id } = eventIdCD.get(data)
+    const { id } = eventIdCD.get<{ id: ObjectId & string }>(data)
 
     await this.delete(msg)
 
-    await this.send(msg, 'message.event_actions', undefined, {
-      reply_markup: { inline_keyboard: getEventActionsInlineKeyboard(id, locale) },
-    })
+    await this.send(msg, 'message.event_actions', undefined, inlineKeyboard.eventActions({ id, locale }))
   }
 
   handleActions = async (msg: Message, data: string) => {
@@ -227,16 +213,17 @@ export class Bot extends TelegramBot {
         if (period === Periods.Once) {
           await this.trpc.event.delete.query(id)
         } else {
-          await this.send(msg, 'actions.cancel.message', undefined, {
-            reply_markup: {
-              inline_keyboard: getDatesKeyboard(
-                startDate,
-                locale,
-                (date) => eventActionDateCD.fill({ id, date, action }),
-                7,
-              ),
-            },
-          })
+          await this.send(
+            msg,
+            'actions.cancel.message',
+            undefined,
+            inlineKeyboard.dates({
+              from: startDate,
+              locale,
+              cb: (date) => eventActionDateCD.fill({ id, date, action }),
+              step: 7,
+            }).keyboard,
+          )
         }
         break
       }
