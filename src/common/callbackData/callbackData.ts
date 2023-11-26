@@ -7,7 +7,7 @@ type HasRequiredFields<T extends string, Required extends string> = Required ext
 type FillValues<
   T extends string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Values extends Record<PropertyKey, any>
+  Values extends Record<PropertyKey, any>,
 > = T extends `${infer U}{${infer Field}}${infer Rest}`
   ? Field extends keyof Values
     ? `${U}{${Values[Field]}}${FillValues<Rest, Values>}`

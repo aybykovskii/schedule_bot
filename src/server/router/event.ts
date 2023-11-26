@@ -98,7 +98,7 @@ export const eventRouter = t.router({
           period: Periods.Once,
           exceptionDates: [],
         },
-        GoogleEventStatuses.Cancelled
+        GoogleEventStatuses.Cancelled,
       )
 
       return result.data

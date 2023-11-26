@@ -9,17 +9,18 @@ export enum Actions {
 
 /**
  * @description Google Calendar allowed colors
- *'1': { background: '#a4bdfc', foreground: '#1d1d1d' },
-  '2': { background: '#7ae7bf', foreground: '#1d1d1d' },
-  '3': { background: '#dbadff', foreground: '#1d1d1d' },
-  '4': { background: '#ff887c', foreground: '#1d1d1d' },
-  '5': { background: '#fbd75b', foreground: '#1d1d1d' },
-  '6': { background: '#ffb878', foreground: '#1d1d1d' },
-  '7': { background: '#46d6db', foreground: '#1d1d1d' },
-  '8': { background: '#e1e1e1', foreground: '#1d1d1d' },
-  '9': { background: '#5484ed', foreground: '#1d1d1d' },
-  '10': { background: '#51b749', foreground: '#1d1d1d' },
-  '11': { background: '#dc2127', foreground: '#1d1d1d' },
+ * @example
+  '1': '#a4bdfc',
+  '2': '#7ae7bf',
+  '3': '#dbadff',
+  '4': '#ff887c',
+  '5': '#fbd75b',
+  '6': '#ffb878',
+  '7': '#46d6db',
+  '8': '#e1e1e1',
+  '9': '#5484ed',
+  '10': '#51b749',
+  '11': '#dc2127',
  */
 export enum EventColorCodes {
   Confirmed = '10',

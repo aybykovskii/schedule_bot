@@ -8,7 +8,7 @@ class Environment {
   constructor() {
     this.keys = Object.values(ENV_KEYS).reduce(
       (acc, key) => ({ ...acc, [key]: process.env[key] ?? '' }),
-      {} as Record<ENV_KEYS, string>
+      {} as Record<ENV_KEYS, string>,
     )
   }
 }
