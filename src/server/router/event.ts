@@ -1,9 +1,9 @@
 import { initTRPC } from '@trpc/server'
+import { z } from 'zod'
 
-import { assertIsEventFilled, isEventFilled } from '@/common/event'
 import { Assertion } from '@/common/assertion'
-import { EventSchema, ObjectIdSchema, UsualDate } from '@/common/schemas'
-import { GoogleEventStatuses, Periods } from '@/types'
+import { EventSchema } from '@/common/event'
+import { env } from '@/common/environment'
 
 import { eventService, googleCalendarService } from '../services'
 
@@ -12,73 +12,65 @@ const { procedure } = t
 
 export const eventRouter = t.router({
   create: procedure
-    .input(EventSchema.pick({ userId: true, name: true, tg: true }))
-    .query(async ({ input: { userId, name, tg } }) => {
-      const unfilledEvent = await eventService.findUnfilled(userId)
-
-      if (unfilledEvent.success) {
-        return unfilledEvent.data
-      }
-
-      const createResult = await eventService.create({ userId, name, tg })
+    .input(EventSchema.omit({ _id: true, googleEventId: true }))
+    .output(z.string({ description: 'event id' }))
+    .query(async ({ input }) => {
+      const createResult = await eventService.create(input)
 
       Assertion.server(createResult)
+
+      const createEventResult = await googleCalendarService.create(input)
+
+      Assertion.server(createEventResult)
+
+      await eventService.update(createResult.data, { googleEventId: createEventResult.data })
 
       return createResult.data
     }),
 
-  readById: procedure.input(ObjectIdSchema).query(async ({ input: id }) => {
-    const readResult = await eventService.findById(id)
+  getById: procedure
+    .input(z.string({ description: 'event id' }))
+    .output(EventSchema)
+    .query(async ({ input: id }) => {
+      const readResult = await eventService.readById(id)
 
-    Assertion.server(readResult)
+      Assertion.server(readResult)
 
-    return readResult.data
-  }),
+      return readResult.data
+    }),
 
-  findUnfilled: procedure.input(EventSchema.pick({ userId: true })).query(async ({ input: { userId } }) => {
-    const readResult = await eventService.findUnfilled(userId)
+  getByUserId: procedure
+    .input(z.number({ description: 'user id' }))
+    .output(z.array(EventSchema))
+    .query(async ({ input }) => {
+      const readResult = await eventService.readByUserId(input)
 
-    Assertion.server(readResult)
+      Assertion.server(readResult)
 
-    return readResult.data
-  }),
-
-  readAll: procedure.input(EventSchema.pick({ userId: true })).query(async ({ input: { userId } }) => {
-    const readResult = await eventService.readByUserId(userId, true)
-
-    Assertion.server(readResult)
-
-    return readResult.data
-  }),
+      return readResult.data
+    }),
 
   update: procedure
-    .input(EventSchema.pick({ userId: true }).and(EventSchema.partial()))
-    .output(EventSchema.partial())
-    .query(async ({ input: { userId, ...event } }) => {
-      const result = await eventService.findUnfilled(userId)
-
-      Assertion.server(result)
-
-      const isFilled = isEventFilled({ ...result.data, ...event })
-
-      const updateResult = await eventService.update(result.data._id, { ...event, isFilled })
+    .input(EventSchema.pick({ _id: true }).and(EventSchema.partial()))
+    .output(EventSchema)
+    .query(async ({ input }) => {
+      const updateResult = await eventService.update(input._id, input)
 
       Assertion.server(updateResult)
 
-      if (isFilled) {
-        assertIsEventFilled(updateResult.data)
-        const createEventResult = await googleCalendarService.createEvent(updateResult.data)
+      const calendarUpdateResult = await googleCalendarService.update(
+        updateResult.data.googleEventId,
+        updateResult.data,
+      )
 
-        Assertion.server(createEventResult)
-
-        await eventService.update(result.data._id, { googleEventId: createEventResult.data })
-      }
+      Assertion.server(calendarUpdateResult)
 
       return updateResult.data
     }),
 
   addExceptionDate: procedure
     .input(EventSchema.pick({ _id: true, date: true }))
+    .output(EventSchema)
     .query(async ({ input: { _id: id, date } }) => {
       const result = await eventService.addExceptionDate(id, date)
 
@@ -89,49 +81,55 @@ export const eventRouter = t.router({
         data: { googleEventId },
       } = result
 
-      await googleCalendarService.updateEvent(googleEventId, data)
+      await googleCalendarService.update(googleEventId, data)
 
-      await googleCalendarService.createEvent(
+      await googleCalendarService.create(
         {
           ...data,
           date,
-          period: Periods.Once,
+          period: 'once',
           exceptionDates: [],
         },
-        GoogleEventStatuses.Cancelled,
+        'cancelled',
       )
 
       return result.data
     }),
 
-  delete: procedure.input(ObjectIdSchema).query(async ({ input: id }) => {
-    const result = await eventService.findById(id)
+  delete: procedure
+    .input(z.string({ description: 'event id' }))
+    .output(z.null())
+    .query(async ({ input: id }) => {
+      const result = await eventService.readById(id)
+
+      Assertion.server(result)
+
+      await googleCalendarService.delete(result.data.googleEventId)
+      await eventService.delete(id)
+
+      if (env.STORE_DELETED_EVENTS) {
+        await googleCalendarService.create(result.data, 'cancelled')
+      }
+
+      return null
+    }),
+
+  deleteOutdated: procedure.output(z.null()).query(async () => {
+    const result = await eventService.deleteOutdated()
 
     Assertion.server(result)
-
-    await googleCalendarService.deleteEvent(result.data.googleEventId)
-    await googleCalendarService.createEvent(result.data, GoogleEventStatuses.Cancelled)
-
-    await eventService.delete(id)
 
     return null
   }),
 
-  getDateBusyHours: procedure.input(UsualDate).query(async ({ input }) => {
-    const result = await eventService.findByDate(input)
-
-    Assertion.server(result)
-
-    return result.data.map((event) => event.time)
-  }),
-
-  getTimeStampAvailablePeriods: procedure
-    .input(EventSchema.pick({ date: true, time: true, dayInWeek: true }))
+  getDateBusyHours: procedure
+    .input(EventSchema.pick({ date: true, period: true }))
+    .output(z.array(z.number()))
     .query(async ({ input }) => {
-      const result = await eventService.findByDayAndTime(input)
+      const result = await eventService.readByDateAndPeriod(input)
 
       Assertion.server(result)
 
-      return result.data.length ? [Periods.Once] : Object.values(Periods)
+      return result.data.map((event) => event.hour)
     }),
 })

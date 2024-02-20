@@ -1,9 +1,18 @@
-import { Locale, PromiseResponse } from '@/types'
+import { Schema, model } from 'mongoose'
 
-import { LocaleModel } from '../models/locale'
+import { PromiseResponse } from '@/types'
+import { Locale } from '@/common/locale'
+
+const LocaleModel = model<Locale>(
+  'Locale',
+  new Schema<Locale>({
+    userId: Number,
+    locale: String,
+  }),
+)
 
 class LocaleService {
-  create = async (locale: Locale): PromiseResponse<Locale> => {
+  create = async (locale: Omit<Locale, '_id'>): PromiseResponse<Locale> => {
     const result = await LocaleModel.create(locale)
 
     if (result.errors) {
@@ -23,7 +32,7 @@ class LocaleService {
     return { success: true, data: result.toObject() }
   }
 
-  update = async (locale: Locale): PromiseResponse<Locale> => {
+  update = async (locale: Omit<Locale, '_id'>): PromiseResponse<Locale> => {
     const result = await LocaleModel.findOneAndUpdate({ userId: locale.userId }, locale, { new: true })
 
     if (!result) {

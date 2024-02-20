@@ -2,15 +2,16 @@ import { calendar_v3, google } from 'googleapis'
 import { RRule, RRuleSet } from 'rrule'
 import dayjs from 'dayjs'
 
-import { EventColorCodes, EventTransparency, GoogleEventStatuses, Periods, PromiseResponse } from '@/types'
+import { PromiseResponse } from '@/types'
 import { env } from '@/common/environment'
 import { Log } from '@/common/logger'
-import { Event } from '@/common/schemas'
+import { Event, Period } from '@/common/event'
 
 import keys from './keys.json'
 
 type GCEvent = calendar_v3.Schema$Event
 type GCEventId = NonNullable<GCEvent['id']>
+type Status = 'confirmed' | 'cancelled'
 
 class GoogleCalendarService {
   private calendar
@@ -40,14 +41,34 @@ class GoogleCalendarService {
     })
   }
 
-  private getRecurrenceString(period: Periods): string[]
+  /**
+ * @description Google Calendar allowed colors
+ * @example
+  '1': '#a4bdfc',
+  '2': '#7ae7bf',
+  '3': '#dbadff',
+  '4': '#ff887c',
+  '5': '#fbd75b',
+  '6': '#ffb878',
+  '7': '#46d6db',
+  '8': '#e1e1e1',
+  '9': '#5484ed',
+  '10': '#51b749',
+  '11': '#dc2127',
+ */
+  private colorByStatus = {
+    confirmed: '10',
+    cancelled: '11',
+  }
 
-  private getRecurrenceString(period: Periods, exdates: string[], time: number): string[]
+  private getRecurrenceString(period: Period): string[]
 
-  private getRecurrenceString(period: Periods, exdates?: string[], time?: number): string[] {
+  private getRecurrenceString(period: Period, exdates: string[], time: number): string[]
+
+  private getRecurrenceString(period: Period, exdates?: string[], time?: number): string[] {
     const rules: string[] = []
 
-    if (period === Periods.Weekly) {
+    if (period === 'weekly') {
       const rrule = new RRule({
         freq: RRule.WEEKLY,
       })
@@ -66,14 +87,14 @@ class GoogleCalendarService {
     return rules
   }
 
-  private getEventInfoByStatus = ({ name, tg }: Event, status: GoogleEventStatuses) => {
-    const isCancelled = status === GoogleEventStatuses.Cancelled
+  private getEventDataByStatus = ({ name, tg }: Pick<Event, 'tg' | 'name'>, status: Status) => {
+    const isCancelled = status === 'cancelled'
 
     return {
       summary: `${isCancelled ? 'Cancelled: ' : ''}${name} - ${tg}`,
-      colorId: isCancelled ? EventColorCodes.Cancelled : EventColorCodes.Confirmed,
-      transparency: isCancelled ? EventTransparency.Transparent : EventTransparency.Opaque,
-      status: GoogleEventStatuses.Confirmed,
+      colorId: this.colorByStatus[status],
+      transparency: isCancelled ? 'transparent' : 'opaque',
+      status: 'confirmed',
     }
   }
 
@@ -98,7 +119,33 @@ class GoogleCalendarService {
     }
   }
 
-  readEventsByDate = async (date: string): PromiseResponse<GCEvent[]> => {
+  create = async (
+    event: Omit<Event, '_id' | 'googleEventId'>,
+    colorStatus: Status = 'confirmed',
+  ): PromiseResponse<GCEventId> => {
+    const { date, hour, period } = event
+    const { summary, colorId, status, transparency } = this.getEventDataByStatus(event, colorStatus)
+
+    const result = await this.calendar.events.insert({
+      calendarId: this.calendarId,
+      requestBody: {
+        status,
+        colorId,
+        summary,
+        transparency,
+        recurrence: this.getRecurrenceString(period),
+        ...this.getEventTime(date, hour),
+      },
+    })
+
+    if (!result.data.id) {
+      return { success: false, error: 'Error while creating event' }
+    }
+
+    return { success: true, data: result.data.id }
+  }
+
+  read = async (date: string): PromiseResponse<GCEvent[]> => {
     const list = await this.calendar.events.list({
       calendarId: this.calendarId,
       timeMin: this.dateAsISO(date),
@@ -112,47 +159,18 @@ class GoogleCalendarService {
     return { success: true, data: list.data.items }
   }
 
-  createEvent = async (event: Event, colorStatus = GoogleEventStatuses.Confirmed): PromiseResponse<GCEventId> => {
-    const { date, time, period } = event
-    const { summary, colorId, status, transparency } = this.getEventInfoByStatus(event, colorStatus)
+  update = async (eventId: string, event: Event): PromiseResponse<GCEvent> => {
+    const { date, hour, exceptionDates, period } = event
 
-    const result = await this.calendar.events.insert({
-      calendarId: this.calendarId,
-      requestBody: {
-        status,
-        colorId,
-        summary,
-        transparency,
-        recurrence: this.getRecurrenceString(period),
-        ...this.getEventTime(date, time),
-      },
-    })
-
-    if (!result.data.id) {
-      return { success: false, error: 'Error while creating event' }
-    }
-
-    return { success: true, data: result.data.id }
-  }
-
-  updateEvent = async (eventId: string, event: Event): PromiseResponse<GCEvent> => {
-    const { date, time, exceptionDates, period } = event
-    const { summary, colorId, status, transparency } = this.getEventInfoByStatus(event, GoogleEventStatuses.Confirmed)
-
-    const ev = {
+    const result = await this.calendar.events.update({
       calendarId: this.calendarId,
       eventId,
       requestBody: {
-        status,
-        colorId,
-        summary,
-        transparency,
-        recurrence: this.getRecurrenceString(period, exceptionDates, time),
-        ...this.getEventTime(date, time),
+        ...this.getEventDataByStatus(event, 'confirmed'),
+        recurrence: this.getRecurrenceString(period, exceptionDates, hour),
+        ...this.getEventTime(date, hour),
       },
-    }
-
-    const result = await this.calendar.events.update(ev)
+    })
 
     if (!result.data) {
       return { success: false, error: 'Error while updating event' }
@@ -161,7 +179,7 @@ class GoogleCalendarService {
     return { success: true, data: result.data }
   }
 
-  deleteEvent = async (eventId: string): PromiseResponse<null> => {
+  delete = async (eventId: string): PromiseResponse<null> => {
     const result = await this.calendar.events.delete({
       calendarId: this.calendarId,
       eventId,

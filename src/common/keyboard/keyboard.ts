@@ -1,38 +1,29 @@
 import { InlineKeyboardButton } from 'node-telegram-bot-api'
 import dayjs from 'dayjs'
 
-import { Actions, Days, Locales, Periods } from '@/types'
-
-import { t } from '../i18n'
-import { Event } from '../schemas'
-import { env } from '../environment'
-import { getPeriodButtonText } from '../event'
-import { DATE_FORMAT, localizeDate } from '../date'
+import { Event, Period, Periods, Actions } from '@/common/event'
+import { t } from '@/common/i18n'
+import { env } from '@/common/environment'
+import { DATE_FORMAT, Day, localizeDate } from '@/common/date'
 import {
   eventActionCD,
-  eventCreateDateCD,
+  eventDateCD,
   eventPeriodCD,
   eventIdCD,
-  eventTimeCD,
+  eventHourCD,
   localeCD,
   nextDatesCD,
   previousDatesCD,
-} from '../callbackData'
+} from '@/common/callbackData'
+import { Lang, Languages } from '@/common/locale'
 
 type Keyboard = InlineKeyboardButton[][]
 
 export class InlineKeyboard {
-  #getDates = ({
-    from,
-    step = 1,
-    exceptions = [],
-    format = DATE_FORMAT,
-  }: {
-    from: string | undefined
-    step?: number
-    exceptions?: string[]
-    format?: string
-  }) => {
+  #getDates = (
+    { from, step = 1, exceptions = [], format = DATE_FORMAT }:
+    { from: string | undefined; step?: number; exceptions?: string[]; format?: string },
+  ) => {
     const dates: string[] = []
     let current = dayjs(from)
 
@@ -52,13 +43,15 @@ export class InlineKeyboard {
     locale,
     cb,
     step = 1,
+    period = 'once',
     exceptions = [],
   }: {
     from: string | undefined
-    locale: Locales
+    locale: Lang
     cb: (date: string) => string
     step?: number
-    exceptions?: Days[]
+    exceptions?: Day[]
+    period?: Period
   }) => {
     const dates = this.#getDates({ from, step, exceptions })
 
@@ -67,7 +60,7 @@ export class InlineKeyboard {
       keyboard: dates.map((date) => [
         {
           callback_data: cb(date),
-          text: `📅 ${localizeDate(date, locale)}`,
+          text: `📅 ${localizeDate({ date, locale, period })}`,
         },
       ]),
     }
@@ -77,20 +70,27 @@ export class InlineKeyboard {
     from,
     locale,
     action,
-    exceptions = env.WEEKEND.split(',') as Days[],
+    period,
+    exceptions = env.DAY_OFF.split(',') as Day[],
   }: {
     from: string | undefined
-    locale: Locales
+    locale: Lang
     action: 'add' | 'subtract'
-    exceptions?: Days[]
+    exceptions?: Day[]
+    period: Period
   }): Keyboard => {
     const { keyboard, dates } = this.dates({
       from,
       locale,
-      cb: (date) => eventCreateDateCD.fill({ date }),
+      cb: (date) => eventDateCD.fill({ date }),
       step: action === 'add' ? 1 : -1,
       exceptions,
+      period,
     })
+
+    if (period === 'weekly') {
+      return keyboard
+    }
 
     const todayDates = this.#getDates({
       from: dayjs().format(DATE_FORMAT),
@@ -111,7 +111,7 @@ export class InlineKeyboard {
     return [...keyboard, todayDates.at(0) === dates.at(0) ? [next] : [prev, next]]
   }
 
-  time = ({
+  hours = ({
     exceptions = [],
     from = +env.START_HOUR,
     to = +env.END_HOUR,
@@ -123,57 +123,61 @@ export class InlineKeyboard {
     const availableHours: Keyboard = []
 
     for (let hour = from; hour < to; hour++) {
-      if (!exceptions.includes(hour)) {
-        availableHours.push([
-          {
-            callback_data: eventTimeCD.fill({ time: hour }),
-            text: `🕘 ${hour}:00`,
-          },
-        ])
-      }
+      if (exceptions.includes(hour)) {
+        continue
+      } 
+
+      availableHours.push([{
+        callback_data: eventHourCD.fill({ hour }),
+        text: `🕘 ${hour}:00`,
+      }])
     }
 
     return availableHours
   }
 
-  periods = ({ locale, periods }: { locale: Locales; periods: Periods[] }): Keyboard =>
-    periods.map((period) => [
-      {
-        callback_data: eventPeriodCD.fill({ period }),
-        text: getPeriodButtonText(period, locale),
-      },
-    ])
+  periods = (locale: Lang): Keyboard =>
+    Object.values(Periods.Values).map((period) => [{
+      callback_data: eventPeriodCD.fill({ period }),
+      text: t({ phrase: `periods.${period}`, locale }),
+    }])
 
-  locales = Object.values(Locales).map((locale) => [
-    {
-      callback_data: localeCD.fill({ locale }),
-      text: t({ phrase: 'locale.name', locale }),
-    },
-  ])
+  locales = Object.values(Languages.Values).map((locale) => [{
+    callback_data: localeCD.fill({ locale }),
+    text: t({ phrase: 'locale.name', locale }),
+  }])
 
-  events = ({ events, locale }: { events: Event[]; locale: Locales }): Keyboard =>
-    events.map(({ _id: id, date, period, time }) => [
+  events = (
+    { events, locale }:
+    { events: Event[]; locale: Lang },
+  ): Keyboard =>
+    events.map(({ _id: id, date, period, hour }) => [
       {
         callback_data: eventIdCD.fill({ id }),
         text: t(
-          { phrase: `message.event_short_info_${period.toLowerCase() as Lowercase<Periods>}`, locale },
+          { phrase: `message.event_short_info_${period}`, locale },
           {
-            period: getPeriodButtonText(period, locale),
+            period: t({ phrase: `periods.${period}`, locale }),
             day: dayjs(date).toDate().toLocaleDateString(locale, { weekday: 'long' }),
-            date: localizeDate(date, locale),
-            time: `${time}:00`,
+            date: localizeDate({ date, locale }),
+            time: `${hour}:00`,
           },
         ),
       },
     ])
 
-  eventActions = ({ id, locale }: { id: string; locale: Locales }): Keyboard =>
-    Object.values(Actions).map((action) => [
-      {
-        callback_data: eventActionCD.fill({ action, id }),
-        text: t({ phrase: `actions.${action}.title`, locale }),
-      },
-    ])
+  eventActions = (
+    { id, locale, period }:
+    { id: string; locale: Lang; period: Period },
+  ): Keyboard =>
+    Object.values(Actions.Values)
+      .filter((action) => action !== 'cancel' || period === 'weekly')
+      .map((action) => [
+        {
+          callback_data: eventActionCD.fill({ action, id }),
+          text: t({ phrase: `actions.${action}.title`, locale }),
+        },
+      ])
 }
 
 export const inlineKeyboard = new InlineKeyboard()

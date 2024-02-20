@@ -1,133 +1,146 @@
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import dayjs from 'dayjs'
+import { model, Schema } from 'mongoose'
 
-import { Event } from '@/common/schemas'
-import { Periods, ModelFields, PromiseResponse } from '@/types'
+import { Event } from '@/common/event'
+import { PromiseResponse, FailedResponse } from '@/types'
 import { Log } from '@/common/logger'
+import { DATE_FORMAT } from '@/common/date'
 
-import { EventModel } from '../models'
+const EventModel = model<Event>(
+  'Event',
+  new Schema<Event>(
+    {
+      userId: Number,
+      name: String,
+      tg: String,
+      hour: Number,
+      period: String,
+      date: String,
+      weekDayNumber: Number,
+      googleEventId: String,
+      exceptionDates: [String],
+    },
+    {
+      toObject: {
+        transform: (_doc, ret) => {
+          ret._id = _doc._id?.toString()
 
-type CreateEventArg = Pick<Event, 'userId' | 'name' | 'tg'>
-type ModelId = ModelFields['_id']
-type UserId = Event['userId']
-type EventDate = Event['date']
+          return ret
+        },
+      },
+      timestamps: {
+        createdAt: 'createdAt',
+        updatedAt: 'updatedAt',
+      },
+    },
+  ),
+)
 
 export class EventService {
-  create = async (event: CreateEventArg): PromiseResponse<CreateEventArg & ModelFields> => {
-    const result = await EventModel.create({ ...event, isFilled: false })
+  #errorHandler = <T extends { errors?: { message?: string } }>(
+    result: T | undefined | null,
+    message: 'creating' | 'reading' | 'reading unfilled' | 'updating' | 'deleting' | 'adding exception dates to',
+  ): FailedResponse | null => {
+    const errorMessage = `Error while ${message} event`
 
-    if (result.errors) {
-      Log.error(`Error while creating event: ${JSON.stringify(result.errors)}`)
+    if (!result) {
+      Log.error(errorMessage)
 
-      return { success: false, error: result.errors.message }
+      return { success: false, error: errorMessage }
     }
 
-    return { success: true, data: result.toObject() }
+    if (!result.errors) return null
+
+    Log.error(`${errorMessage}: ${JSON.stringify(result.errors)}`)
+
+    return { success: false, error: result.errors.message ?? errorMessage }
   }
 
-  findById = async (id: ModelId): PromiseResponse<Event> => {
+  create = async (event: Omit<Event, '_id' | 'googleEventId'>): PromiseResponse<Event['_id']> => {
+    const result = await EventModel.create(event)
+
+    return this.#errorHandler(result, 'creating') ?? { success: true, data: result.toObject()._id }
+  }
+
+  readById = async (id: Event['_id']): PromiseResponse<Event> => {
     const result = await EventModel.findById(id)
 
-    if (!result || result.errors) {
-      Log.error(`Error while reading event: ${JSON.stringify(result?.errors)}`)
-
-      return { success: false, error: result?.errors?.message ?? 'Error while reading event' }
-    }
-
-    return { success: true, data: result.toObject() }
+    return this.#errorHandler(result, 'reading') ?? { success: true, data: result!.toObject() }
   }
 
-  findUnfilled = async (userId: UserId): PromiseResponse<Event> => {
-    const result = await EventModel.findOne({ userId, isFilled: false })
+  readByUserId = async (userId: Event['userId']): PromiseResponse<Event[]> => {
+    const data = await EventModel.find({ userId })
 
-    if (!result || result.errors) {
-      Log.error(`Error while reading unfilled event: ${JSON.stringify(result?.errors)}`)
-
-      return { success: false, error: result?.errors?.message ?? 'Error while reading unfilled event' }
-    }
-
-    return { success: true, data: result.toObject() }
+    return { success: true, data: data.map((event) => event.toObject()) }
   }
 
-  readByUserId = async (userId: UserId, isFilled: boolean): PromiseResponse<Event[]> => {
-    const data = await EventModel.find({ userId, isFilled })
+  readByDateAndPeriod = async ({ date, period }: Pick<Event, 'date' | 'period'>): PromiseResponse<Event[]> => {
+    const weekDayNumber = dayjs(date).day()
 
-    return { success: true, data }
-  }
-
-  findByDate = async (date: EventDate): PromiseResponse<Event[]> => {
-    const day = dayjs(date).day()
-
-    const data = await EventModel.find({
-      isFilled: true,
-      $or: [
-        { period: Periods.Once, date },
-        {
-          period: Periods.Weekly,
-          exceptionDates: { $ne: date },
-          dayInWeek: day,
-        },
-      ],
-    })
-
-    return { success: true, data }
-  }
-
-  findByDayAndTime = async ({
-    date,
-    time,
-    dayInWeek,
-  }: Pick<Event, 'date' | 'time' | 'dayInWeek'>): PromiseResponse<Event[]> => {
-    const data = await EventModel.find({
-      isFilled: true,
-      $or: [
-        { period: Periods.Once, date, time },
-        { period: Periods.Weekly, dayInWeek, time },
-        { period: Periods.Weekly, date, time },
-      ],
-    })
-
-    return { success: true, data }
-  }
-
-  update = async (id: ModelId, event: Partial<Event>): PromiseResponse<Partial<Event>> => {
-    const newEventFields = Object.entries(event).reduce(
-      (acc, [key, value]) => (!value && typeof value !== 'number' ? acc : { ...acc, [key]: value }),
-      {} as Partial<Event>,
+    const result = await EventModel.find(
+      period === 'weekly'
+        ? {
+            $or: [
+              { period: 'once', date },
+              { period: 'weekly', weekDayNumber },
+            ],
+          }
+        : {
+            $or: [
+              { period, date },
+              {
+                period: 'weekly',
+                exceptionDates: { $ne: date },
+                weekDayNumber,
+              },
+            ],
+          },
     )
 
-    const result = await EventModel.findOneAndUpdate({ _id: id }, { ...newEventFields }, { new: true })
-
-    if (!result || result.errors) {
-      Log.error(`Error while updating event: ${JSON.stringify(result?.errors)}`)
-
-      return { success: false, error: result?.errors?.message ?? 'Error while updating event' }
-    }
-
-    return { success: true, data: result.toObject() }
+    return { success: true, data: result.map((event) => event.toObject()) }
   }
 
-  addExceptionDate = async (id: ModelId, date: EventDate): PromiseResponse<Event> => {
+  readByDayAndTime = async ({
+    date,
+    hour,
+    weekDayNumber,
+  }: Pick<Event, 'date' | 'hour' | 'weekDayNumber'>): PromiseResponse<Event[]> => {
+    const data = await EventModel.find({
+      isFilled: true,
+      $or: [
+        { period: 'once', date, hour },
+        { period: 'weekly', weekDayNumber, hour },
+        { period: 'weekly', date, hour },
+      ],
+    })
+
+    return { success: true, data: data.map((event) => event.toObject()) }
+  }
+
+  update = async (id: Event['_id'], event: Partial<Event>): PromiseResponse<Event> => {
+    const result = await EventModel.findOneAndUpdate({ _id: id }, event, { new: true })
+
+    return this.#errorHandler(result, 'updating') ?? { success: true, data: result!.toObject() }
+  }
+
+  addExceptionDate = async (id: Event['_id'], date: Event['date']): PromiseResponse<Event> => {
     const result = await EventModel.findOneAndUpdate({ _id: id }, { $push: { exceptionDates: date } }, { new: true })
 
-    if (!result || result?.errors) {
-      Log.error(`Error while adding exception date: ${JSON.stringify(result?.errors)}`)
-
-      return { success: false, error: result?.errors?.message ?? 'Error while adding exception date' }
-    }
-
-    return { success: true, data: result?.toObject() }
+    return this.#errorHandler(result, 'adding exception dates to') ?? { success: true, data: result!.toObject() }
   }
 
-  delete = async (id: ModelId): PromiseResponse<null> => {
-    const event = await EventModel.findOne({ _id: id })
+  delete = async (id: Event['_id']): PromiseResponse<null> => {
+    const result = await EventModel.findOneAndDelete({ _id: id })
 
-    const result = await event?.deleteOne()
+    return this.#errorHandler(result, 'deleting') ?? { success: true, data: null }
+  }
 
-    if (result?.errors) {
-      Log.error(`Error while deleting event: ${JSON.stringify(result.errors)}`)
+  deleteOutdated = async (): PromiseResponse<null> => {
+    const result = await EventModel.deleteMany({ period: 'once', date: { $lt: dayjs().format(DATE_FORMAT) } })
 
-      return { success: false, error: result.errors.message }
-    }
+    Log.info(`Deleted ${result.deletedCount} outdated events`)
 
     return { success: true, data: null }
   }

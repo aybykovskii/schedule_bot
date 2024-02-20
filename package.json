@@ -2,7 +2,7 @@
   "name": "schedule_bot",
   "version": "1.0.0",
   "description": "Telegram bot to create appointments",
-  "author": "Alexey Bykovsky<alesha.byk@gamil.com>",
+  "author": "Aleksei Bykovskii<aybykovskii@gamil.com>",
   "main": "src/index.ts",
   "scripts": {
     "client": "ts-node src/bot/client",

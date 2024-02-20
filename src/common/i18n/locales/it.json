@@ -6,7 +6,7 @@
   },
   "message": {
     "time": "Seleziona l'ora",
-    "period": "Quanto spesso vuoi esercitarti?",
+    "period": "Seleziona il periodo delle lezioni",
     "result": "La tua lezione si svolgerà il {date} alle {time}.\nHai indicato che vuoi studiare {periodo}.\nL'insegnante ti contatterà tramite Telegram.",
     "event_short_info_weekly": "{period}, {day}, {time}",
     "event_short_info_once": "{period}, {date}, {time}",
@@ -46,7 +46,15 @@
     "cancel": {
       "title": "Annulla",
       "message": "Seleziona la data in cui desideri annullare l'evento",
-      "success": "Evento {date} annullato"
+      "success": "Evento {date} alle {time} annullato"
+    },
+    "delete": {
+      "title": "Eliminare",
+      "success": "Evento {date} alle {time} eliminato"
+    },
+    "edit": {
+      "title": "Modifica",
+      "success": "Evento modificato con successo"
     }
   },
   "error": "Si è verificato un errore, riprova più tardi o segnala l'errore all'autore del bot.\nLe informazioni sull'autore possono essere trovate nel comando /info"

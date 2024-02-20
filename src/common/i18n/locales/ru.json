@@ -9,7 +9,7 @@
 
   "message": {
     "time": "Выберите время",
-    "period": "Как часто вы хотите заниматься?",
+    "period": "Выберите период занятий",
     "result": "Ваше занятие состоится {date} в {time}.\nВы указали, что хотите заниматься {period}.\nПреподавать свяжется с вами через Telegram.",
     "event_short_info_weekly": "{period}, {day}, {time}",
     "event_short_info_once": "{period}, {date}, {time}",
@@ -22,10 +22,18 @@
   },
 
   "actions": {
+    "edit": {
+      "title": "Изменить",
+      "success": "Событие успешно изменено"
+    },
     "cancel": {
       "title": "Отменить",
       "message": "Выберите дату, когда хотите отменить событие",
-      "success": "Событие {date} отменено"
+      "success": "Событие {date} в {time} отменено"
+    },
+    "delete": {
+      "title": "Удалить",
+      "success": "Событие {date} в {time} удалено"
     }
   },
 
