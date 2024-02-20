@@ -6,7 +6,7 @@
   },
   "message": {
     "time": "Select time",
-    "period": "How often do you want to exercise?",
+    "period": "Select class period",
     "result": "Your class will take place on {date} at {time}.\nYou indicated that you want to study {period}.\nThe teacher will contact you via Telegram.",
     "event_short_info_weekly": "{period}, {day}, {time}",
     "event_short_info_once": "{period}, {date}, {time}",
@@ -46,7 +46,15 @@
     "cancel": {
       "title": "Cancel",
       "message": "Select the date you want to cancel the event",
-      "success": "Event {date} canceled"
+      "success": "Event {date} at {time} canceled"
+    },
+    "delete": {
+      "title": "Delete",
+      "success": "Event {date} at {time} deleted"
+    },
+    "edit": {
+      "title": "Change",
+      "success": "Event successfully modified"
     }
   },
   "error": "An error occurred, try again later, or report the error to the bot author.\n\nInformation about the author can be found in the /info command"

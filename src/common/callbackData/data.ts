@@ -2,11 +2,11 @@ import { CallbackData } from './callbackData'
 
 export const localeCD = new CallbackData('locale: {locale}')
 
-export const eventCreateDateCD = new CallbackData('eventCreateDate: {date}')
+export const eventDateCD = new CallbackData('eventDate: {date}')
 
 export const eventActionDateCD = new CallbackData('evActionDate: {action}_{id}_{date}')
 
-export const eventTimeCD = new CallbackData('eventTime: {time}')
+export const eventHourCD = new CallbackData('eventTime: {hour}')
 
 export const eventPeriodCD = new CallbackData('eventPeriod: {period}')
 

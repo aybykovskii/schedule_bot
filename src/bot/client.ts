@@ -3,24 +3,26 @@ import { fetch as undiciFetch } from 'undici'
 import { FetchEsque } from '@trpc/client/dist/internals/types'
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
 
-import { Commands } from '@/types'
 import { env } from '@/common/environment'
 import { RootRouter } from '@/server/server'
 import { DATE_FORMAT } from '@/common/date'
 import { Log } from '@/common/logger'
 import { Assertion } from '@/common/assertion'
-import { toBotCommand } from '@/common/commands'
 import {
   eventActionCD,
-  eventCreateDateCD,
+  eventDateCD,
   eventPeriodCD,
   eventIdCD,
-  eventTimeCD,
+  eventHourCD,
   localeCD,
   nextDatesCD,
   previousDatesCD,
   eventActionDateCD,
 } from '@/common/callbackData'
+import { inlineKeyboard } from '@/common/keyboard'
+import { TelegramCommand } from '@/common/commands'
+import { Period } from '@/common/event'
+import { t } from '@/common/i18n'
 
 import { Bot } from './bot'
 
@@ -39,31 +41,47 @@ bot.setChatMenuButton({ menu_button: { type: 'commands' } })
 
 const startBot = async () => {
   bot.on('message', async (message) => {
-    const { text, userId, locale } = await bot.getMessageInfo(message)
+    const { text, userId, locale } = await bot.getMessageInfo<TelegramCommand>(message)
 
     switch (text) {
-      case toBotCommand(Commands.START): {
+      case '/start': {
         await bot.changeChatLocale(userId, locale)
         await bot.send(message, 'commands.start.message')
         break
       }
 
-      case toBotCommand(Commands.CHANGE_LOCALE): {
-        await bot.sendLocales(message)
+      case '/change_locale': {
+        await bot.send(message, 'commands.change_locale.message', undefined, inlineKeyboard.locales)
+
         break
       }
 
-      case toBotCommand(Commands.CREATE): {
-        await bot.initiateEvent(message)
+      case '/create': {
+        await bot.initializeEventDraft(message)
+
+        await bot.send(message, 'message.period', undefined, inlineKeyboard.periods(locale))
         break
       }
 
-      case toBotCommand(Commands.EDIT): {
-        await bot.sendUserEvents(message)
+      case '/edit': {
+        await bot.initializeEventDraft(message)
+
+        const events = await trpc.event.getByUserId.query(userId)
+
+        const editableEvents = events.filter(
+          ({ period, date }) => period === 'weekly' || dayjs(date).isAfter(dayjs()),
+        )
+
+        await bot.send(
+          message,
+          'commands.edit.message',
+          undefined,
+          inlineKeyboard.events({ events: editableEvents, locale }),
+        )
         break
       }
 
-      case toBotCommand(Commands.INFO): {
+      case '/info': {
         await bot.send(message, 'commands.info.message')
         break
       }
@@ -82,24 +100,74 @@ const startBot = async () => {
       Assertion.client(data, 'Callback query must have data')
       Assertion.client(message, 'Callback query must have message')
 
+      const {
+        userId,
+        locale,
+        chat: { username, first_name: name = '' },
+      } = await bot.getMessageInfo(message)
+
       switch (true) {
         case localeCD.match(data): {
-          await bot.setLocale(message, data)
-          break
-        }
+          await bot.delete(message)
 
-        case eventCreateDateCD.match(data): {
-          await bot.sendTime(message, data)
-          break
-        }
+          await bot.changeChatLocale(userId, locale)
 
-        case eventTimeCD.match(data): {
-          await bot.sendPeriods(message, data)
+          await bot.send(message, 'locale.set')
           break
         }
 
         case eventPeriodCD.match(data): {
-          bot.submitEvent(message, data)
+          const { period } = eventPeriodCD.get<{ period: Period }>(data)
+
+          await trpc.eventDraft.update.query({ userId, period })
+          await bot.sendDates(message, { period })
+          await bot.delete(message)
+          break
+        }
+
+        case eventDateCD.match(data): {
+          const { date } = eventDateCD.get(data)
+
+          const { period } = await trpc.eventDraft.update.query({ userId, date, weekDayNumber: dayjs(date).day() })
+
+          const busyHours = await trpc.event.getDateBusyHours.query({ date, period })
+
+          await bot.send(message, 'message.time', undefined, inlineKeyboard.hours({ exceptions: busyHours }))
+
+          await bot.delete(message)
+          break
+        }
+
+        case eventHourCD.match(data): {
+          const { hour: h } = eventHourCD.get(data)
+
+          const { date, hour, period, weekDayNumber, updateEventId } = await trpc.eventDraft.update.query({
+            userId,
+            hour: +h,
+          })
+
+          if (updateEventId) {
+            await trpc.event.update.query({ _id: updateEventId, date, hour, weekDayNumber })
+          } else {
+            await trpc.event.create.query({
+              date,
+              hour,
+              period,
+              weekDayNumber,
+              userId,
+              name,
+              tg: `@${username}`,
+              exceptionDates: [],
+            })
+          }
+
+          await bot.delete(message)
+          await bot.send(message, 'message.result', {
+            time: `${hour}:00`,
+            period: t({ phrase: `periods.${period}`, locale }),
+            date: dayjs(date).toDate().toLocaleDateString(locale),
+          })
+
           break
         }
 
@@ -108,7 +176,7 @@ const startBot = async () => {
 
           await bot.delete(message)
 
-          await bot.sendDates(message, dayjs(date).format(DATE_FORMAT), 'subtract')
+          await bot.sendDates(message, { startFrom: dayjs(date).format(DATE_FORMAT), action: 'subtract' })
           break
         }
 
@@ -117,12 +185,22 @@ const startBot = async () => {
 
           await bot.delete(message)
 
-          await bot.sendDates(message, dayjs(date).format(DATE_FORMAT))
+          await bot.sendDates(message, { startFrom: dayjs(date).format(DATE_FORMAT) })
           break
         }
 
         case eventIdCD.match(data): {
-          await bot.sendEventActions(message, data)
+          const { id } = eventIdCD.get<{ id: string }>(data)
+          const { period } = await trpc.event.getById.query(id)
+
+          await bot.delete(message)
+
+          await bot.send(
+            message,
+            'message.event_actions',
+            undefined,
+            inlineKeyboard.eventActions({ id, locale, period }),
+          )
           break
         }
 

@@ -15,7 +15,7 @@ const app = express()
 mongoose
   .connect(env.MONGODB_URL)
   .then(() => {
-    Log.info('connected to mongoDB')
+    Log.info('Connected to mongoDB')
   })
   .catch((e) => {
     Log.error(`Catch error while connecting to mongoDB: ${e}`)
@@ -30,12 +30,12 @@ app.use(
   createExpressMiddleware({
     router: rootRouter,
     onError: Log.error,
-  })
+  }),
 )
 
 app
   .listen(env.SERVER_PORT, () => {
-    Log.info(`listening on port ${env.SERVER_PORT}`)
+    Log.info(`Listening on port ${env.SERVER_PORT}`)
   })
   .on('error', (e) => {
     Log.error(`Catch error while listening on port ${env.SERVER_PORT}: ${e}`)
