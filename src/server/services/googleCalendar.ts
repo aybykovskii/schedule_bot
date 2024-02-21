@@ -18,9 +18,9 @@ class GoogleCalendarService {
 
   private calendarId
 
-  private startHour = +env.START_HOUR
+  private startHour = env.START_HOUR
 
-  private endHour = +env.END_HOUR
+  private endHour = env.END_HOUR
 
   constructor(botGmail: string, privateKey: string, scope: string, calendarId: string) {
     this.calendarId = calendarId

@@ -1,28 +1,36 @@
 import 'dotenv/config'
+import { z } from 'zod'
 
-enum ENV_KEYS {
-  MODE = 'MODE',
-  TG_BOT_TOKEN = 'TG_BOT_TOKEN',
-  MONGODB_URL = 'MONGODB_URL',
-  SEVER_PORT = 'SERVER_PORT',
-  START_HOUR = 'START_HOUR',
-  END_HOUR = 'END_HOUR',
-  GOOGLE_ACCOUNT_EMAIL = 'GOOGLE_ACCOUNT_EMAIL',
-  GOOGLE_CALENDAR_ID = 'GOOGLE_CALENDAR_ID',
-  GOOGLE_SCOPE = 'GOOGLE_SCOPE',
-  DAY_OFF = 'DAY_OFF',
+import { Log } from '@/common/logger'
+
+export const Days = z.enum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+export type Day = z.infer<typeof Days>
+
+export const environmentSchema = z.object({
+  MODE: z.enum(['development', 'production']),
+  TG_BOT_TOKEN: z.string(),
+  MONGODB_URL: z.string(),
+  SERVER_PORT: z.string().transform(Number),
+  START_HOUR: z.string().transform(Number),
+  END_HOUR: z.string().transform(Number),
+  GOOGLE_ACCOUNT_EMAIL: z.string(),
+  GOOGLE_CALENDAR_ID: z.string(),
+  GOOGLE_SCOPE: z.string(),
+  DAY_OFF: z.string().optional().transform((val) => val?.split(',') as Day[]),
   // Создавать ли отмененные события в календаре при удалении события
-  STORE_DELETED_EVENTS = 'STORE_DELETED_EVENTS',
-}
+  STORE_DELETED_EVENTS: z.string().optional().transform(Boolean),
+})
+
+export type EnvironmentSchema = z.infer<typeof environmentSchema>
 
 class Environment {
-  public keys: Record<ENV_KEYS, string>
+  public keys: EnvironmentSchema
 
   constructor() {
-    this.keys = Object.values(ENV_KEYS).reduce(
-      (acc, key) => ({ ...acc, [key]: process.env[key] ?? '' }),
-      {} as Record<ENV_KEYS, string>,
-    )
+    const env = environmentSchema.parse(process.env)
+
+    Log.info('Starting with environment:', env)
+    this.keys = env
   }
 }
 

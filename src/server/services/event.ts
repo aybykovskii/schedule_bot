@@ -6,7 +6,7 @@ import { model, Schema } from 'mongoose'
 import { Event } from '@/common/event'
 import { PromiseResponse, FailedResponse } from '@/types'
 import { Log } from '@/common/logger'
-import { DATE_FORMAT } from '@/common/date'
+import { Dates } from '@/common/date'
 
 const EventModel = model<Event>(
   'Event',
@@ -138,7 +138,7 @@ export class EventService {
   }
 
   deleteOutdated = async (): PromiseResponse<null> => {
-    const result = await EventModel.deleteMany({ period: 'once', date: { $lt: dayjs().format(DATE_FORMAT) } })
+    const result = await EventModel.deleteMany({ period: 'once', date: { $lt: Dates.format() } })
 
     Log.info(`Deleted ${result.deletedCount} outdated events`)
 

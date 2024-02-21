@@ -6,7 +6,7 @@ import TelegramBot, { InlineKeyboardButton, Message, SendMessageOptions } from '
 import { Assertion } from '@/common/assertion'
 import { eventActionCD, eventActionDateCD } from '@/common/callbackData'
 import { getCommands } from '@/common/commands'
-import { DATE_FORMAT, localizeDate } from '@/common/date'
+import { Dates } from '@/common/date'
 import { AppError } from '@/common/error'
 import { Phrase, t } from '@/common/i18n'
 import { inlineKeyboard } from '@/common/keyboard'
@@ -115,7 +115,7 @@ export class Bot extends TelegramBot {
     let startDate = eventDate
 
     while (dayjs(startDate).isBefore(dayjs())) {
-      startDate = dayjs(startDate).add(7, 'days').format(DATE_FORMAT)
+      startDate = Dates.format(dayjs(startDate).add(7, 'days'))
     }
 
     switch (action) {
@@ -187,7 +187,7 @@ export class Bot extends TelegramBot {
     await this.send(
       msg,
       `actions.${action}.success`,
-      { date: localizeDate({ date, locale }), time: `${hour}:00` },
+      { date: Dates.localize({ date, locale }), time: `${hour}:00` },
     )
   }
 }

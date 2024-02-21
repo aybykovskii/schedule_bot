@@ -1,34 +1,30 @@
 import dayjs from 'dayjs'
-import { z } from 'zod'
 
 import { Extended } from '@/types/common'
 import { Lang } from '@/common/locale'
 import { Period } from '@/common/event'
 
+import { Day } from '../environment'
 
-export const DATE_FORMAT = 'MM.DD.YYYY'
+export class Dates {
+  static formats = {
+    date: 'MM.DD.YYYY',
+    day: 'dddd',
+  }
 
-const FORMAT_RULES = {
-  once: { month: 'long', day: 'numeric', weekday: 'long' },
-  weekly: { weekday: 'long' },
-} satisfies Record<Period, Intl.DateTimeFormatOptions>
+  private static rules: Record<Period, Intl.DateTimeFormatOptions> = {
+    once: { month: 'long', day: 'numeric', weekday: 'long' },
+    weekly: { weekday: 'long' },
+  }
 
-export const localizeDate = (
-  { date, locale, period = 'once' }:
-  { date: Extended<Date>; locale: Lang; period?: Period },
-) =>
-  Intl.DateTimeFormat(locale, FORMAT_RULES[period]).format(dayjs(date).toDate())
+  static localize = (
+    { date, locale, period = 'once' }:
+    { date: Extended<Date>; locale: Lang; period?: Period },
+  ) =>
+    Intl.DateTimeFormat(locale, this.rules[period]).format(dayjs(date).toDate())
 
-export const Days = z.enum([
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-])
-
-export type Day = z.infer<typeof Days>
-
-  
+  static format = <F extends keyof typeof Dates.formats>(
+    date?: dayjs.Dayjs, format?: F): F extends 'day' ? Day : string => (
+    (date || dayjs()).format(this.formats[format ?? 'date']) as F extends 'day' ? Day : string
+  )
+}

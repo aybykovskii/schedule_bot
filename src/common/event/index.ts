@@ -10,7 +10,7 @@ export const EventDraftSchema = MongooseBaseSchema.extend({
   userId: z.number(),
   period: Periods,
   date: z.string().regex(/^\d{1,2}\.\d{1,2}\.\d{4}$/),
-  hour: z.number().min(+env.START_HOUR).max(+env.END_HOUR),
+  hour: z.number().min(env.START_HOUR).max(env.END_HOUR),
   weekDayNumber: z.number(),
   updateEventId: z.string().optional(),
 })

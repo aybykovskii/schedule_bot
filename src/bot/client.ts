@@ -5,7 +5,6 @@ import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
 
 import { env } from '@/common/environment'
 import { RootRouter } from '@/server/server'
-import { DATE_FORMAT } from '@/common/date'
 import { Log } from '@/common/logger'
 import { Assertion } from '@/common/assertion'
 import {
@@ -23,6 +22,7 @@ import { inlineKeyboard } from '@/common/keyboard'
 import { TelegramCommand } from '@/common/commands'
 import { Period } from '@/common/event'
 import { t } from '@/common/i18n'
+import { Dates } from '@/common/date'
 
 import { Bot } from './bot'
 
@@ -176,7 +176,7 @@ const startBot = async () => {
 
           await bot.delete(message)
 
-          await bot.sendDates(message, { startFrom: dayjs(date).format(DATE_FORMAT), action: 'subtract' })
+          await bot.sendDates(message, { startFrom: Dates.format(dayjs(date)), action: 'subtract' })
           break
         }
 
@@ -185,7 +185,7 @@ const startBot = async () => {
 
           await bot.delete(message)
 
-          await bot.sendDates(message, { startFrom: dayjs(date).format(DATE_FORMAT) })
+          await bot.sendDates(message, { startFrom: Dates.format(dayjs(date)) })
           break
         }
 

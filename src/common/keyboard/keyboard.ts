@@ -3,8 +3,8 @@ import dayjs from 'dayjs'
 
 import { Event, Period, Periods, Actions } from '@/common/event'
 import { t } from '@/common/i18n'
-import { env } from '@/common/environment'
-import { DATE_FORMAT, Day, localizeDate } from '@/common/date'
+import { env, Day } from '@/common/environment'
+import { Dates } from '@/common/date'
 import {
   eventActionCD,
   eventDateCD,
@@ -21,15 +21,15 @@ type Keyboard = InlineKeyboardButton[][]
 
 export class InlineKeyboard {
   #getDates = (
-    { from, step = 1, exceptions = [], format = DATE_FORMAT }:
-    { from: string | undefined; step?: number; exceptions?: string[]; format?: string },
+    { from, step = 1, exceptions = [] }:
+    { from: string | undefined; step?: number; exceptions?: Day[] },
   ) => {
     const dates: string[] = []
     let current = dayjs(from)
 
-    while (dates.length < 7) {
-      if (!exceptions.includes(current.format('dddd'))) {
-        dates[step > 0 ? 'push' : 'unshift'](current.format(format))
+    while (dates.length < 7) {      
+      if (!exceptions.includes(Dates.format(current, 'day'))) {
+        dates[step > 0 ? 'push' : 'unshift'](Dates.format(current))
       }
 
       current = current.add(step, 'days')
@@ -60,7 +60,7 @@ export class InlineKeyboard {
       keyboard: dates.map((date) => [
         {
           callback_data: cb(date),
-          text: `📅 ${localizeDate({ date, locale, period })}`,
+          text: `📅 ${Dates.localize({ date, locale, period })}`,
         },
       ]),
     }
@@ -71,7 +71,7 @@ export class InlineKeyboard {
     locale,
     action,
     period,
-    exceptions = env.DAY_OFF.split(',') as Day[],
+    exceptions = env.DAY_OFF,
   }: {
     from: string | undefined
     locale: Lang
@@ -92,11 +92,7 @@ export class InlineKeyboard {
       return keyboard
     }
 
-    const todayDates = this.#getDates({
-      from: dayjs().format(DATE_FORMAT),
-      step: 1,
-      exceptions,
-    })
+    const todayDates = this.#getDates({ from: Dates.format(), exceptions })
 
     const prev = {
       callback_data: previousDatesCD.fill({ date: dates.at(0) }),
@@ -113,8 +109,8 @@ export class InlineKeyboard {
 
   hours = ({
     exceptions = [],
-    from = +env.START_HOUR,
-    to = +env.END_HOUR,
+    from = env.START_HOUR,
+    to = env.END_HOUR,
   }: {
     exceptions: number[]
     from?: number
@@ -159,7 +155,7 @@ export class InlineKeyboard {
           {
             period: t({ phrase: `periods.${period}`, locale }),
             day: dayjs(date).toDate().toLocaleDateString(locale, { weekday: 'long' }),
-            date: localizeDate({ date, locale }),
+            date: Dates.localize({ date, locale }),
             time: `${hour}:00`,
           },
         ),
