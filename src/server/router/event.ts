@@ -60,7 +60,7 @@ export const eventRouter = t.router({
 
       const calendarUpdateResult = await googleCalendarService.update(
         updateResult.data.googleEventId,
-        updateResult.data,
+        updateResult.data
       )
 
       Assertion.server(calendarUpdateResult)
@@ -90,7 +90,7 @@ export const eventRouter = t.router({
           period: 'once',
           exceptionDates: [],
         },
-        'cancelled',
+        'cancelled'
       )
 
       return result.data
