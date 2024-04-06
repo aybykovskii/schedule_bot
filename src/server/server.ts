@@ -2,13 +2,13 @@ import express from 'express'
 import mongoose from 'mongoose'
 import { createExpressMiddleware } from '@trpc/server/adapters/express'
 
-import { i18n } from '@/common/i18n'
 import { env } from '@/common/environment'
+import { i18n } from '@/common/i18n'
 import { Log, loggerMiddleware } from '@/common/logger'
 
 import { rootRouter } from './router'
 
-export { RootRouter } from './router'
+export type { RootRouter } from './router'
 
 const app = express()
 
@@ -30,7 +30,7 @@ app.use(
   createExpressMiddleware({
     router: rootRouter,
     onError: Log.error,
-  }),
+  })
 )
 
 app
