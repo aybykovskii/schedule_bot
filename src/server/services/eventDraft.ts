@@ -29,14 +29,14 @@ const EventDraftModel = model<EventDraft>(
         createdAt: 'createdAt',
         updatedAt: 'updatedAt',
       },
-    },
-  ),
+    }
+  )
 )
 
 class EventDraftService {
   #errorHandler = <T extends { errors?: { message?: string } }>(
     result: T | undefined | null,
-    message: 'creating' | 'reading' | 'updating' | 'deleting',
+    message: 'creating' | 'reading' | 'updating' | 'deleting'
   ): FailedResponse | null => {
     if (!result) {
       Log.error(`Error while ${message} eventDraft`)
@@ -47,13 +47,18 @@ class EventDraftService {
     if (result.errors) {
       Log.error(`Error while ${message} eventDraft: ${result.errors.message}`)
 
-      return { success: false, error: `Error while ${message} eventDraft: ${result.errors.message}` }
+      return {
+        success: false,
+        error: `Error while ${message} eventDraft: ${result.errors.message}`,
+      }
     }
 
     return null
   }
 
-  create = async (eventDraft: Pick<EventDraft, 'userId' | 'updateEventId'>): PromiseResponse<EventDraft['_id']> => {
+  create = async (
+    eventDraft: Pick<EventDraft, 'userId' | 'updateEventId'>
+  ): PromiseResponse<EventDraft['_id']> => {
     const result = await EventDraftModel.create(eventDraft)
 
     return this.#errorHandler(result, 'creating') ?? { success: true, data: result.toObject()._id }

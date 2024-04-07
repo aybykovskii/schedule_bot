@@ -14,6 +14,4 @@ export const eventIdCD = new CallbackData('eventId: {id}')
 
 export const eventActionCD = new CallbackData('eventAction: {action}_{id}')
 
-export const previousDatesCD = new CallbackData('previousDatesFrom: {date}')
-
-export const nextDatesCD = new CallbackData('nextDatesFrom: {date}')
+export const changeDatesCD = new CallbackData('datesFrom: {date}')

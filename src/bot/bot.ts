@@ -8,16 +8,17 @@ import TelegramBot, {
 } from 'node-telegram-bot-api'
 
 import { Assertion } from '@/common/assertion'
-import { eventActionCD, eventActionDateCD } from '@/common/callbackData'
+import { eventActionCD, eventActionDateCD, eventDateCD } from '@/common/callbackData'
 import { getCommands } from '@/common/commands'
 import { Dates } from '@/common/date'
 import { AppError } from '@/common/error'
-import { Action, EventDraft, Period } from '@/common/event'
+import { Action, EventDraft } from '@/common/event'
 import { Phrase, t } from '@/common/i18n'
-import { inlineKeyboard } from '@/common/keyboard'
+import { DatesArgs, inlineKeyboard } from '@/common/keyboard'
 import { Lang, getUserLocale } from '@/common/locale'
 import { RootRouter } from '@/server/router'
 import { Extended } from '@/types'
+import { env } from '@/common/environment'
 
 type ClientTRPC = ReturnType<typeof createTRPCProxyClient<RootRouter>>
 
@@ -97,11 +98,7 @@ export class Bot extends TelegramBot {
 
   sendDates = async (
     msg: Message,
-    {
-      startFrom,
-      action = 'add',
-      period = 'once',
-    }: { startFrom?: string | undefined; action?: 'add' | 'subtract'; period?: Period }
+    { start, period = 'once' }: Pick<DatesArgs, 'start' | 'period'>
   ) => {
     const { locale } = await this.getMessageInfo(msg)
 
@@ -109,7 +106,14 @@ export class Bot extends TelegramBot {
       msg,
       'commands.create.message',
       undefined,
-      inlineKeyboard.datesWithButtons({ from: startFrom, locale, action, period })
+      inlineKeyboard.dates({
+        start,
+        locale,
+        period,
+        cb: (date) => eventDateCD.fill({ date }),
+        withControls: period === 'once',
+        exceptions: env.DAY_OFF,
+      })
     )
   }
 
@@ -121,17 +125,17 @@ export class Bot extends TelegramBot {
 
     const { date: eventDate, period } = await this.trpc.event.getById.query(id)
 
-    let startDate = eventDate
+    let startDate = dayjs(eventDate)
 
-    while (dayjs(startDate).isBefore(dayjs())) {
-      startDate = Dates.format(dayjs(startDate).add(7, 'days'))
+    while (startDate.isBefore(dayjs())) {
+      startDate = startDate.add(7, 'days')
     }
 
     switch (action) {
       case 'edit': {
         await this.initializeEventDraft(msg, { period, updateEventId: id })
 
-        await this.sendDates(msg, { period })
+        await this.sendDates(msg, { period, start: dayjs() })
         break
       }
 
@@ -141,12 +145,12 @@ export class Bot extends TelegramBot {
           'actions.cancel.message',
           undefined,
           inlineKeyboard.dates({
-            from: startDate,
+            start: startDate,
             locale,
             cb: (date) => eventActionDateCD.fill({ id, date, action }),
             step: 7,
             period: 'once',
-          }).keyboard
+          })
         )
         break
       }

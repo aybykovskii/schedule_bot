@@ -14,15 +14,13 @@ import {
   eventIdCD,
   eventHourCD,
   localeCD,
-  nextDatesCD,
-  previousDatesCD,
+  changeDatesCD,
   eventActionDateCD,
 } from '@/common/callbackData'
 import { inlineKeyboard } from '@/common/keyboard'
 import { TelegramCommand } from '@/common/commands'
 import { Period } from '@/common/event'
 import { t } from '@/common/i18n'
-import { Dates } from '@/common/date'
 
 import { Bot } from './bot'
 
@@ -69,14 +67,14 @@ const startBot = async () => {
         const events = await trpc.event.getByUserId.query(userId)
 
         const editableEvents = events.filter(
-          ({ period, date }) => period === 'weekly' || dayjs(date).isAfter(dayjs()),
+          ({ period, date }) => period === 'weekly' || dayjs(date).isAfter(dayjs())
         )
 
         await bot.send(
           message,
           'commands.edit.message',
           undefined,
-          inlineKeyboard.events({ events: editableEvents, locale }),
+          inlineKeyboard.events({ events: editableEvents, locale })
         )
         break
       }
@@ -120,7 +118,7 @@ const startBot = async () => {
           const { period } = eventPeriodCD.get<{ period: Period }>(data)
 
           await trpc.eventDraft.update.query({ userId, period })
-          await bot.sendDates(message, { period })
+          await bot.sendDates(message, { period, start: dayjs() })
           await bot.delete(message)
           break
         }
@@ -128,11 +126,20 @@ const startBot = async () => {
         case eventDateCD.match(data): {
           const { date } = eventDateCD.get(data)
 
-          const { period } = await trpc.eventDraft.update.query({ userId, date, weekDayNumber: dayjs(date).day() })
+          const { period } = await trpc.eventDraft.update.query({
+            userId,
+            date,
+            weekDayNumber: dayjs(date).day(),
+          })
 
           const busyHours = await trpc.event.getDateBusyHours.query({ date, period })
 
-          await bot.send(message, 'message.time', undefined, inlineKeyboard.hours({ exceptions: busyHours }))
+          await bot.send(
+            message,
+            'message.time',
+            undefined,
+            inlineKeyboard.hours({ exceptions: busyHours })
+          )
 
           await bot.delete(message)
           break
@@ -141,10 +148,11 @@ const startBot = async () => {
         case eventHourCD.match(data): {
           const { hour: h } = eventHourCD.get(data)
 
-          const { date, hour, period, weekDayNumber, updateEventId } = await trpc.eventDraft.update.query({
-            userId,
-            hour: +h,
-          })
+          const { date, hour, period, weekDayNumber, updateEventId } =
+            await trpc.eventDraft.update.query({
+              userId,
+              hour: +h,
+            })
 
           if (updateEventId) {
             await trpc.event.update.query({ _id: updateEventId, date, hour, weekDayNumber })
@@ -171,21 +179,12 @@ const startBot = async () => {
           break
         }
 
-        case previousDatesCD.match(data): {
-          const { date } = previousDatesCD.get(data)
+        case changeDatesCD.match(data): {
+          const { date } = changeDatesCD.get(data)
 
           await bot.delete(message)
 
-          await bot.sendDates(message, { startFrom: Dates.format(dayjs(date)), action: 'subtract' })
-          break
-        }
-
-        case nextDatesCD.match(data): {
-          const { date } = nextDatesCD.get(data)
-
-          await bot.delete(message)
-
-          await bot.sendDates(message, { startFrom: Dates.format(dayjs(date)) })
+          await bot.sendDates(message, { start: dayjs(date), period: 'once' })
           break
         }
 
@@ -199,7 +198,7 @@ const startBot = async () => {
             message,
             'message.event_actions',
             undefined,
-            inlineKeyboard.eventActions({ id, locale, period }),
+            inlineKeyboard.eventActions({ id, locale, period })
           )
           break
         }

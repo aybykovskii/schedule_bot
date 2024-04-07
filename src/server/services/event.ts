@@ -1,5 +1,3 @@
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import dayjs from 'dayjs'
 import { model, Schema } from 'mongoose'
 
@@ -34,14 +32,22 @@ const EventModel = model<Event>(
         createdAt: 'createdAt',
         updatedAt: 'updatedAt',
       },
-    },
-  ),
+    }
+  )
 )
+
+type ErrorMessage =
+  | 'creating'
+  | 'reading'
+  | 'reading unfilled'
+  | 'updating'
+  | 'deleting'
+  | 'adding exception dates to'
 
 export class EventService {
   #errorHandler = <T extends { errors?: { message?: string } }>(
     result: T | undefined | null,
-    message: 'creating' | 'reading' | 'reading unfilled' | 'updating' | 'deleting' | 'adding exception dates to',
+    message: ErrorMessage
   ): FailedResponse | null => {
     const errorMessage = `Error while ${message} event`
 
@@ -76,7 +82,10 @@ export class EventService {
     return { success: true, data: data.map((event) => event.toObject()) }
   }
 
-  readByDateAndPeriod = async ({ date, period }: Pick<Event, 'date' | 'period'>): PromiseResponse<Event[]> => {
+  readByDateAndPeriod = async ({
+    date,
+    period,
+  }: Pick<Event, 'date' | 'period'>): PromiseResponse<Event[]> => {
     const weekDayNumber = dayjs(date).day()
 
     const result = await EventModel.find(
@@ -96,7 +105,7 @@ export class EventService {
                 weekDayNumber,
               },
             ],
-          },
+          }
     )
 
     return { success: true, data: result.map((event) => event.toObject()) }
@@ -126,9 +135,18 @@ export class EventService {
   }
 
   addExceptionDate = async (id: Event['_id'], date: Event['date']): PromiseResponse<Event> => {
-    const result = await EventModel.findOneAndUpdate({ _id: id }, { $push: { exceptionDates: date } }, { new: true })
+    const result = await EventModel.findOneAndUpdate(
+      { _id: id },
+      { $push: { exceptionDates: date } },
+      { new: true }
+    )
 
-    return this.#errorHandler(result, 'adding exception dates to') ?? { success: true, data: result!.toObject() }
+    return (
+      this.#errorHandler(result, 'adding exception dates to') ?? {
+        success: true,
+        data: result!.toObject(),
+      }
+    )
   }
 
   delete = async (id: Event['_id']): PromiseResponse<null> => {

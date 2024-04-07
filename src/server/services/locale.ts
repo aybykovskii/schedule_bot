@@ -8,7 +8,7 @@ const LocaleModel = model<Locale>(
   new Schema<Locale>({
     userId: Number,
     locale: String,
-  }),
+  })
 )
 
 class LocaleService {
@@ -33,7 +33,9 @@ class LocaleService {
   }
 
   update = async (locale: Omit<Locale, '_id'>): PromiseResponse<Locale> => {
-    const result = await LocaleModel.findOneAndUpdate({ userId: locale.userId }, locale, { new: true })
+    const result = await LocaleModel.findOneAndUpdate({ userId: locale.userId }, locale, {
+      new: true,
+    })
 
     if (!result) {
       return { success: false, error: 'Error while updating locale' }
